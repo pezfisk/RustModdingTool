@@ -1,0 +1,34 @@
+import { Button, VerticalBox, LineEdit } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    in-out property <string> file_path: "No file selected";
+    in-out property <string> testing: "No image selected";
+    in property <image> previewImage;
+
+    callback request_file();
+    title: "Image Splitter";
+    min-height: 150px;
+    min-width: 600px;
+
+    VerticalLayout {
+        spacing: 10px;
+        padding: 50px;
+
+        Text {
+            text: root.testing;
+            horizontal-alignment: center;
+        }
+
+        Button {
+            text: "Open file";
+            clicked => {
+                root.request_file();
+            }
+        }
+
+        Text {
+            text: root.file_path;
+            horizontal-alignment: center;
+        }
+    }
+}
