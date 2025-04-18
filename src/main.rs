@@ -14,8 +14,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Hello, world!");
 
-    let archive_path =
-        String::from("/home/marc/Documents/Rust/SlintModdingTool/tests/mod_settings.zip");
     let extract_to = String::from(".temp/");
 
     ui.on_request_file(move || {
@@ -33,10 +31,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
             }
-
             let path_str = path.to_str().unwrap().to_string();
 
-            extract_file(&path_str, &extract_to);
+            match extract_file(&path_str, &extract_to) {
+                Ok(_) => {}
+
+                Err(e) => {
+                    println!("Error: {}", e);
+                }
+            }
         }
     });
 
@@ -45,7 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn extract_file(archive_path: &str, extract_to: &str) -> bool {
+fn extract_file(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>> {
     if let Some(extension) = Path::new(&archive_path).extension() {
         let result = match extension.to_str().unwrap() {
             "zip" => extract_zip(&archive_path, &extract_to),
@@ -59,7 +62,7 @@ fn extract_file(archive_path: &str, extract_to: &str) -> bool {
         println!("Extracted files correctly?: {}", result.is_ok());
     }
 
-    true
+    Ok(())
 }
 
 use zip::ZipArchive;
