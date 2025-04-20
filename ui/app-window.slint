@@ -1,12 +1,14 @@
 import { Button, VerticalBox, LineEdit } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
-    in-out property <string> file_path: "No file selected";
-    in-out property <string> testing: "No image selected";
-    in property <image> previewImage;
+    in-out property <string> dir_path: "";
+    in-out property <string> archive_path: "";
+    in-out property <string> testing: "";
 
-    callback request_file();
-    title: "Image Splitter";
+    callback request_path();
+    callback mod();
+
+    title: "Game Modding Tool";
     min-height: 150px;
     min-width: 600px;
 
@@ -15,19 +17,45 @@ export component AppWindow inherits Window {
         padding: 50px;
 
         Text {
-            text: root.testing;
+            text: "Path to directory containing compressed files ( RAR - ZIP - 7z)";
             horizontal-alignment: center;
         }
 
-        Button {
-            text: "Open file";
-            clicked => {
-                root.request_file();
+        HorizontalLayout {
+
+            LineEdit {
+                text: root.archive_path;
+                edited(text) => {
+                    root.archive_path = text;
+                }
+            }
+
+            Button {
+                text: "Open directory";
+                clicked => {
+                    root.request_path();
+                }
             }
         }
 
         Text {
-            text: root.file_path;
+            text: "Path to game directory";
+            horizontal-alignment: center;
+        }
+
+        HorizontalLayout {
+            LineEdit { }
+        }
+
+        Button {
+            text: "Uncompress and move into game dir";
+            clicked => {
+                root.mod();
+            }
+        }
+
+        Text {
+            text: root.dir_path;
             horizontal-alignment: center;
         }
     }

@@ -6,7 +6,6 @@ version = 4
 name = "SlintModdingTool"
 version = "0.1.0"
 dependencies = [
- "rayon",
  "rfd",
  "sevenz-rust2",
  "slint",

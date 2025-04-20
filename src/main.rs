@@ -1,47 +1,78 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 slint::include_modules!();
-use rayon::prelude::*;
 use rfd::FileDialog;
 use slint::{SharedString, Weak};
-use std::error::Error;
-use std::path::Path;
-use std::{fs, io};
+use std::{
+    cell::RefCell,
+    error::Error,
+    fs, io,
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let ui = AppWindow::new()?;
+    let window = AppWindow::new()?;
+    let ui = Rc::new(window);
 
     let ui_handle = ui.as_weak();
 
     println!("Hello, world!");
 
-    let extract_to = String::from(".temp/");
+    let mut archive_path = Rc::new(RefCell::new(PathBuf::new()));
+    let extract_to = Rc::new(String::from(".temp/"));
+    let mut game_path = String::new();
 
-    ui.on_request_file(move || {
-        if let Some(path) = FileDialog::new().pick_folder() {
+    {
+        let archive_path = archive_path.clone();
+        let extract_to = extract_to.clone();
+        let ui_copy = Rc::clone(&ui);
+
+        ui.on_request_path(move || {
+            if let Some(path) = FileDialog::new().pick_folder() {
+                ui_copy.set_archive_path(SharedString::from(path.to_str().unwrap()));
+                *archive_path.borrow_mut() = path;
+            }
+        });
+    }
+
+    {
+        let archive_path = archive_path.clone();
+        println!("{:?}", archive_path);
+        let extract_to = extract_to.clone();
+        let ui_copy = Rc::clone(&ui);
+        ui.on_mod(move || {
+            let path = PathBuf::from(ui_copy.get_archive_path().to_string());
             let exts = ["zip", "rar", "7z"];
-
-            for entry in fs::read_dir(&path).unwrap() {
+            for entry in fs::read_dir(&*path).unwrap() {
                 let entry = entry.unwrap();
                 println!("Entry: {}", entry.path().display());
                 let path = entry.path();
 
                 if let Some(extension) = path.extension() {
                     if exts.contains(&extension.to_str().unwrap()) {
-                        extract_file(&path.to_str().unwrap().to_string(), &extract_to);
+                        let result = extract_file(&path.to_str().unwrap().to_string(), &extract_to);
+                        println!("Extracted files correctly?: {}", result.is_ok());
                     }
                 }
             }
             let path_str = path.to_str().unwrap().to_string();
 
             match extract_file(&path_str, &extract_to) {
-                Ok(_) => {}
+                Ok(_) => {
+                    if let Some(ui) = ui_handle.upgrade() {
+                        ui.set_dir_path(SharedString::from("Succesfully extracted files"));
+                    }
+                }
 
                 Err(e) => {
-                    println!("Error: {}", e);
+                    if let Some(ui) = ui_handle.upgrade() {
+                        let error = format!("Error: {}", e);
+                        ui.set_dir_path(SharedString::from(error));
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 
     ui.run()?;
 
@@ -59,7 +90,6 @@ fn extract_file(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Erro
                 Ok(())
             }
         };
-        println!("Extracted files correctly?: {}", result.is_ok());
     }
 
     Ok(())
@@ -133,8 +163,7 @@ fn extract_rar(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error
 
 use sevenz_rust2::Archive as SevenZArchive;
 fn extract_7z(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>> {
-    println!("Extracting 7z ({}) to ({})", archive_path, archive_path);
+    println!("Extracting 7z ({}) to ({})", archive_path, extract_to);
     sevenz_rust2::decompress_file(archive_path, extract_to).expect("Failed to extract 7z");
-    println!("Extracted to ({})", extract_to);
     Ok(())
 }

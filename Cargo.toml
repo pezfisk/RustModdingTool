@@ -9,7 +9,6 @@ slint = "1.10.0"
 unrar = "0.5.8"
 zip = "2.6.1"
 rfd = "0.15.2"
-rayon = "1.10.0"
 
 [build-dependencies]
 slint-build = "1.10.0"
