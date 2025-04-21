@@ -1,11 +1,12 @@
 import { Button, VerticalBox, LineEdit } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
-    in-out property <string> dir_path: "";
+    in-out property <string> footer: "";
     in-out property <string> archive_path: "";
-    in-out property <string> testing: "";
+    in-out property <string> game_path: "";
 
-    callback request_path();
+    callback request_archive_path();
+    callback request_game_path();
     callback mod();
 
     title: "Game Modding Tool";
@@ -16,35 +17,55 @@ export component AppWindow inherits Window {
         spacing: 10px;
         padding: 50px;
 
-        Text {
-            text: "Path to directory containing compressed files ( RAR - ZIP - 7z)";
-            horizontal-alignment: center;
-        }
-
-        HorizontalLayout {
-
-            LineEdit {
-                text: root.archive_path;
-                edited(text) => {
-                    root.archive_path = text;
-                }
+        VerticalLayout {
+            Text {
+                text: "Path to directory containing compressed files ( RAR - ZIP - 7z)";
+                horizontal-alignment: center;
             }
 
-            Button {
-                text: "Open directory";
-                clicked => {
-                    root.request_path();
+            HorizontalLayout {
+                spacing: 10px;
+                LineEdit {
+                    text: root.archive_path;
+                    edited(text) => {
+                        root.archive_path = text;
+                    }
+                }
+
+                Button {
+                    width: 200px;
+                    text: "Open directory";
+                    clicked => {
+                        root.request_archive_path();
+                    }
                 }
             }
         }
 
-        Text {
-            text: "Path to game directory";
-            horizontal-alignment: center;
-        }
+        VerticalLayout {
+            Text {
+                text: "Path to game directory";
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
 
-        HorizontalLayout {
-            LineEdit { }
+            HorizontalLayout {
+                spacing: 10px;
+                LineEdit {
+                    text: root.game_path;
+                    edited(text) => {
+                        root.game_path = text;
+                    }
+                }
+
+                Button {
+                    width: 200px;
+                    text: "Open game location";
+                    clicked => {
+                        root.request_game_path();
+                    }
+                }
+            }
         }
 
         Button {
@@ -55,7 +76,7 @@ export component AppWindow inherits Window {
         }
 
         Text {
-            text: root.dir_path;
+            text: root.footer;
             horizontal-alignment: center;
         }
     }

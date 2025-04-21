@@ -1,9 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 slint::include_modules!();
 use rfd::FileDialog;
-use slint::{SharedString, Weak};
+use slint::SharedString;
 use std::{
-    cell::RefCell,
+    env,
     error::Error,
     fs, io,
     path::{Path, PathBuf},
@@ -18,57 +18,81 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Hello, world!");
 
-    let mut archive_path = Rc::new(RefCell::new(PathBuf::new()));
+    // let archive_path = Rc::new(RefCell::new(PathBuf::new()));
     let extract_to = Rc::new(String::from(".temp/"));
-    let mut game_path = String::new();
 
     {
-        let archive_path = archive_path.clone();
-        let extract_to = extract_to.clone();
+        // let archive_path = archive_path.clone();
+        // let extract_to = extract_to.clone();
         let ui_copy = Rc::clone(&ui);
 
-        ui.on_request_path(move || {
+        ui.on_request_archive_path(move || {
             if let Some(path) = FileDialog::new().pick_folder() {
                 ui_copy.set_archive_path(SharedString::from(path.to_str().unwrap()));
-                *archive_path.borrow_mut() = path;
+                // *archive_path.borrow_mut() = path;
             }
         });
     }
 
     {
-        let archive_path = archive_path.clone();
-        println!("{:?}", archive_path);
+        let ui_copy = Rc::clone(&ui);
+
+        ui.on_request_game_path(move || {
+            if let Some(path) = FileDialog::new().pick_folder() {
+                ui_copy.set_game_path(SharedString::from(path.to_str().unwrap()));
+            }
+        });
+    }
+
+    {
         let extract_to = extract_to.clone();
         let ui_copy = Rc::clone(&ui);
         ui.on_mod(move || {
             let path = PathBuf::from(ui_copy.get_archive_path().to_string());
+            let game_path = PathBuf::from(ui_copy.get_game_path().to_string());
             let exts = ["zip", "rar", "7z"];
-            for entry in fs::read_dir(&*path).unwrap() {
-                let entry = entry.unwrap();
-                println!("Entry: {}", entry.path().display());
-                let path = entry.path();
+            println!("Path: '{}'", path.display());
+            if path.exists() {
+                for entry in fs::read_dir(&*path).unwrap() {
+                    let entry = entry.unwrap();
+                    println!("Entry: {}", entry.path().display());
+                    let path = entry.path();
 
-                if let Some(extension) = path.extension() {
-                    if exts.contains(&extension.to_str().unwrap()) {
-                        let result = extract_file(&path.to_str().unwrap().to_string(), &extract_to);
-                        println!("Extracted files correctly?: {}", result.is_ok());
+                    if let Some(extension) = path.extension() {
+                        if exts.contains(&extension.to_str().unwrap()) {
+                            let _result = match extract_file(
+                                &path.to_str().unwrap().to_string(),
+                                &extract_to,
+                            ) {
+                                Ok(_) => {
+                                    if let Some(ui) = ui_handle.upgrade() {
+                                        println!("Extracted files correctly");
+                                        ui.set_footer(SharedString::from(
+                                            "Succesfully extracted files",
+                                        ));
+                                    }
+
+                                    println!(
+                                        "Extracted files -> Now copying over to target directory"
+                                    );
+
+                                    println!("Path: {}", game_path.display());
+                                    copy_to_dir(&game_path, Path::from(""));
+                                }
+                                Err(e) => {
+                                    if let Some(ui) = ui_handle.upgrade() {
+                                        println!("Failed to extract files: {}", e);
+                                        let error = format!("Error: {}", e);
+                                        ui.set_footer(SharedString::from(error));
+                                    }
+                                }
+                            };
+                        }
                     }
                 }
-            }
-            let path_str = path.to_str().unwrap().to_string();
-
-            match extract_file(&path_str, &extract_to) {
-                Ok(_) => {
-                    if let Some(ui) = ui_handle.upgrade() {
-                        ui.set_dir_path(SharedString::from("Succesfully extracted files"));
-                    }
-                }
-
-                Err(e) => {
-                    if let Some(ui) = ui_handle.upgrade() {
-                        let error = format!("Error: {}", e);
-                        ui.set_dir_path(SharedString::from(error));
-                    }
+            } else {
+                if let Some(ui) = ui_handle.upgrade() {
+                    ui.set_footer(SharedString::from("No archive selected"));
                 }
             }
         });
@@ -161,9 +185,68 @@ fn extract_rar(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error
     Ok(())
 }
 
-use sevenz_rust2::Archive as SevenZArchive;
 fn extract_7z(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>> {
     println!("Extracting 7z ({}) to ({})", archive_path, extract_to);
     sevenz_rust2::decompress_file(archive_path, extract_to).expect("Failed to extract 7z");
+    Ok(())
+}
+
+fn copy_to_dir(extract_to: &Path, from_where: &Path) -> Result<(), Box<dyn Error>> {
+    let mut temp_dir = PathBuf::new();
+    match env::current_dir() {
+        Ok(path) => {
+            temp_dir.push(path);
+            temp_dir.push(".temp/");
+            temp_dir.push(from_where.file_name().unwrap());
+        }
+        Err(e) => {
+            println!("Failed to get current directory: {}", e);
+        }
+    }
+    println!(
+        "Copying files from {:?} to ({:?})",
+        temp_dir.display(),
+        extract_to
+    );
+
+    for entry_result in fs::read_dir(&*temp_dir)? {
+        println!("{}", entry_result?.path().display());
+    }
+
+    for entry_result in fs::read_dir(&*temp_dir)? {
+        let entry = entry_result?;
+        let src_path = entry.path();
+        let filename = entry.file_name();
+        let dst_path = extract_to.join(&filename);
+
+        //if dst_path.exists() {
+        //    println!("File already exists at: {}", dst_path.display());
+        //    continue;
+        //}
+
+        let metadata = entry.metadata()?;
+
+        if metadata.is_dir() {
+            println!(
+                "Creating directory and copying contents: '{}' -> '{}'",
+                src_path.display(),
+                dst_path.display()
+            );
+
+            // fs::create_dir_all(&dst_path)?;
+            let stupid_bullshit = &*dst_path.join("/");
+            // println!("{:?}", stupid_bullshit);
+            // copy_to_dir(stupid_bullshit);
+        } else if metadata.is_file() {
+            println!(
+                "Copying file: '{}' -> '{}'",
+                src_path.display(),
+                dst_path.display()
+            );
+
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+
     Ok(())
 }
