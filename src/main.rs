@@ -48,6 +48,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         let extract_to = extract_to.clone();
         let ui_copy = Rc::clone(&ui);
         ui.on_mod(move || {
+            fs::remove_dir_all(match env::current_dir() {
+                Ok(path) => path.join(".temp/"),
+                Err(e) => {
+                    println!("Failed to get current directory: {}", e);
+                    PathBuf::new()
+                }
+            });
+
             let path = PathBuf::from(ui_copy.get_archive_path().to_string());
             let game_path = PathBuf::from(ui_copy.get_game_path().to_string());
             let exts = ["zip", "rar", "7z"];
@@ -72,12 +80,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                                         ));
                                     }
 
-                                    println!(
-                                        "Extracted files -> Now copying over to target directory"
-                                    );
+                                    println!("Now copying over to target directory");
 
                                     println!("Path: {}", game_path.display());
-                                    copy_to_dir(&game_path, Path::from(""));
+
+                                    copy_to_dir(&game_path, Path::new(""));
                                 }
                                 Err(e) => {
                                     if let Some(ui) = ui_handle.upgrade() {
@@ -191,13 +198,13 @@ fn extract_7z(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
-fn copy_to_dir(extract_to: &Path, from_where: &Path) -> Result<(), Box<dyn Error>> {
-    let mut temp_dir = PathBuf::new();
+fn copy_to_dir(extract_to: &Path, start_point: &Path) -> Result<(), Box<dyn Error>> {
+    let mut walk_dir = PathBuf::new();
     match env::current_dir() {
         Ok(path) => {
-            temp_dir.push(path);
-            temp_dir.push(".temp/");
-            temp_dir.push(from_where.file_name().unwrap());
+            walk_dir.push(path);
+            walk_dir.push(".temp/");
+            walk_dir.push(start_point);
         }
         Err(e) => {
             println!("Failed to get current directory: {}", e);
@@ -205,15 +212,11 @@ fn copy_to_dir(extract_to: &Path, from_where: &Path) -> Result<(), Box<dyn Error
     }
     println!(
         "Copying files from {:?} to ({:?})",
-        temp_dir.display(),
+        walk_dir.display(),
         extract_to
     );
 
-    for entry_result in fs::read_dir(&*temp_dir)? {
-        println!("{}", entry_result?.path().display());
-    }
-
-    for entry_result in fs::read_dir(&*temp_dir)? {
+    for entry_result in fs::read_dir(&*walk_dir)? {
         let entry = entry_result?;
         let src_path = entry.path();
         let filename = entry.file_name();
@@ -233,10 +236,10 @@ fn copy_to_dir(extract_to: &Path, from_where: &Path) -> Result<(), Box<dyn Error
                 dst_path.display()
             );
 
-            // fs::create_dir_all(&dst_path)?;
-            let stupid_bullshit = &*dst_path.join("/");
-            // println!("{:?}", stupid_bullshit);
-            // copy_to_dir(stupid_bullshit);
+            let new_walk_dir = walk_dir.join(&filename);
+
+            fs::create_dir(&dst_path);
+            copy_to_dir(&dst_path, &new_walk_dir)?;
         } else if metadata.is_file() {
             println!(
                 "Copying file: '{}' -> '{}'",
