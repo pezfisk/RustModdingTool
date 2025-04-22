@@ -1,9 +1,11 @@
-import { Button, VerticalBox, LineEdit } from "std-widgets.slint";
+import { Button, VerticalBox, LineEdit, Switch } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     in-out property <string> footer: "";
     in-out property <string> archive_path: "";
     in-out property <string> game_path: "";
+    in-out property <bool> overwrite: true;
+    in-out property <bool> direct: false;
 
     callback request_archive_path();
     callback request_game_path();
@@ -68,16 +70,47 @@ export component AppWindow inherits Window {
             }
         }
 
-        Button {
-            text: "Uncompress and move into game dir";
-            clicked => {
-                root.mod();
-            }
-        }
+        VerticalLayout {
+            spacing: 10px;
+            VerticalLayout {
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 25px;
+                    Switch {
+                        text: "Overwrite existing files";
+                        checked: true;
+                        toggled() => {
+                            root.overwrite = !root.overwrite;
+                        }
+                    }
 
-        Text {
-            text: root.footer;
-            horizontal-alignment: center;
+                    Switch {
+                        text: "Extract directly (Faster - Less disk usage - Can't create backup)";
+                        checked: false;
+                        toggled() => {
+                            root.overwrite = true;
+                            root.direct = !root.direct;
+                        }
+                    }
+                }
+
+                Text {
+                    horizontal-alignment: center;
+                    text: "(Backups not yet implemented, but not supported when extracting directly to game directory)";
+                }
+            }
+
+            Button {
+                text: "Uncompress and move into game dir";
+                clicked => {
+                    root.mod();
+                }
+            }
+
+            Text {
+                text: root.footer;
+                horizontal-alignment: center;
+            }
         }
     }
 }

@@ -58,6 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             let path = PathBuf::from(ui_copy.get_archive_path().to_string());
             let game_path = PathBuf::from(ui_copy.get_game_path().to_string());
+            let overwrite = ui_copy.get_overwrite();
             let exts = ["zip", "rar", "7z"];
             println!("Path: '{}'", path.display());
             if path.exists() {
@@ -84,7 +85,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                                     println!("Path: {}", game_path.display());
 
-                                    copy_to_dir(&game_path, Path::new(""));
+                                    copy_to_dir(&game_path, Path::new(""), overwrite);
                                 }
                                 Err(e) => {
                                     if let Some(ui) = ui_handle.upgrade() {
@@ -198,7 +199,11 @@ fn extract_7z(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
-fn copy_to_dir(extract_to: &Path, start_point: &Path) -> Result<(), Box<dyn Error>> {
+fn copy_to_dir(
+    extract_to: &Path,
+    start_point: &Path,
+    overwrite: bool,
+) -> Result<(), Box<dyn Error>> {
     let mut walk_dir = PathBuf::new();
     match env::current_dir() {
         Ok(path) => {
@@ -221,12 +226,6 @@ fn copy_to_dir(extract_to: &Path, start_point: &Path) -> Result<(), Box<dyn Erro
         let src_path = entry.path();
         let filename = entry.file_name();
         let dst_path = extract_to.join(&filename);
-
-        //if dst_path.exists() {
-        //    println!("File already exists at: {}", dst_path.display());
-        //    continue;
-        //}
-
         let metadata = entry.metadata()?;
 
         if metadata.is_dir() {
@@ -239,13 +238,18 @@ fn copy_to_dir(extract_to: &Path, start_point: &Path) -> Result<(), Box<dyn Erro
             let new_walk_dir = walk_dir.join(&filename);
 
             fs::create_dir(&dst_path);
-            copy_to_dir(&dst_path, &new_walk_dir)?;
+            copy_to_dir(&dst_path, &new_walk_dir, overwrite)?;
         } else if metadata.is_file() {
             println!(
                 "Copying file: '{}' -> '{}'",
                 src_path.display(),
                 dst_path.display()
             );
+
+            if dst_path.exists() && !overwrite {
+                println!("File already exists at: {}", dst_path.display());
+                continue;
+            }
 
             fs::copy(&src_path, &dst_path)?;
         }
