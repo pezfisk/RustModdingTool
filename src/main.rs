@@ -5,7 +5,8 @@ use slint::SharedString;
 use std::{
     env,
     error::Error,
-    fs, io,
+    fs::{self, OpenOptions},
+    io::{self, prelude::*},
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -19,7 +20,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Hello, world!");
 
     // let archive_path = Rc::new(RefCell::new(PathBuf::new()));
-    let extract_to = Rc::new(String::from(".temp/"));
 
     {
         // let archive_path = archive_path.clone();
@@ -28,7 +28,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         ui.on_request_archive_path(move || {
             if let Some(path) = FileDialog::new().pick_folder() {
-                ui_copy.set_archive_path(SharedString::from(path.to_str().unwrap()));
+                if let Some(path_str) = path.to_str() {
+                    ui_copy.set_archive_path(SharedString::from(path_str));
+                }
                 // *archive_path.borrow_mut() = path;
             }
         });
@@ -39,27 +41,33 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         ui.on_request_game_path(move || {
             if let Some(path) = FileDialog::new().pick_folder() {
-                ui_copy.set_game_path(SharedString::from(path.to_str().unwrap()));
+                if let Some(path_str) = path.to_str() {
+                    ui_copy.set_game_path(SharedString::from(path_str));
+                }
             }
         });
     }
 
     {
-        let extract_to = extract_to.clone();
         let ui_copy = Rc::clone(&ui);
         ui.on_mod(move || {
-            fs::remove_dir_all(match env::current_dir() {
-                Ok(path) => path.join(".temp/"),
+            let path = PathBuf::from(ui_copy.get_archive_path().to_string());
+            let game_path = PathBuf::from(ui_copy.get_game_path().to_string());
+            let extract_to = match &game_path.file_name() {
+                Some(name) => format!(".temp/{}/", name.to_string_lossy()),
+                None => String::from(".temp/Unknown/"),
+            };
+            let overwrite = ui_copy.get_overwrite();
+            let exts = ["zip", "rar", "7z"];
+
+            let _ = fs::remove_dir_all(match env::current_dir() {
+                Ok(path) => path.join(&extract_to),
                 Err(e) => {
                     println!("Failed to get current directory: {}", e);
                     PathBuf::new()
                 }
             });
 
-            let path = PathBuf::from(ui_copy.get_archive_path().to_string());
-            let game_path = PathBuf::from(ui_copy.get_game_path().to_string());
-            let overwrite = ui_copy.get_overwrite();
-            let exts = ["zip", "rar", "7z"];
             println!("Path: '{}'", path.display());
             if path.exists() {
                 for entry in fs::read_dir(&*path).unwrap() {
@@ -83,9 +91,32 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                                     println!("Now copying over to target directory");
 
+                                    let log_path = PathBuf::from(&extract_to).join("existing.txt");
                                     println!("Path: {}", game_path.display());
 
-                                    copy_to_dir(&game_path, Path::new(""), overwrite);
+                                    match copy_to_dir(
+                                        &game_path,
+                                        &PathBuf::from(&extract_to).join("extracted"),
+                                        Path::new(""),
+                                        overwrite,
+                                        &log_path,
+                                    ) {
+                                        Ok(_) => {
+                                            if let Some(ui) = ui_handle.upgrade() {
+                                                println!("Copied files correctly");
+                                                ui.set_footer(SharedString::from(
+                                                    "Succesfully copied files",
+                                                ));
+                                            }
+                                        }
+                                        Err(e) => {
+                                            if let Some(ui) = ui_handle.upgrade() {
+                                                println!("Failed to copy files: {}", e);
+                                                let error = format!("Error: {}", e);
+                                                ui.set_footer(SharedString::from(error));
+                                            }
+                                        }
+                                    }
                                 }
                                 Err(e) => {
                                     if let Some(ui) = ui_handle.upgrade() {
@@ -113,7 +144,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn extract_file(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>> {
     if let Some(extension) = Path::new(&archive_path).extension() {
-        let result = match extension.to_str().unwrap() {
+        let __result = match extension.to_str().unwrap() {
             "zip" => extract_zip(&archive_path, &extract_to),
             "rar" => extract_rar(&archive_path, &extract_to),
             "7z" => extract_7z(&archive_path, &extract_to),
@@ -131,11 +162,11 @@ use zip::ZipArchive;
 fn extract_zip(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>> {
     println!("Extracting zip ({}) to ({})", archive_path, extract_to);
 
-    let file = fs::File::open(archive_path).unwrap();
-    let mut archive = ZipArchive::new(file).unwrap();
+    let file = fs::File::open(archive_path)?;
+    let mut archive = ZipArchive::new(file)?;
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).unwrap();
+        let mut file = archive.by_index(i)?;
 
         let outpath = match file.enclosed_name() {
             Some(path) => path.to_owned(),
@@ -145,7 +176,7 @@ fn extract_zip(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error
         let outpath = Path::new(extract_to).join(outpath);
 
         if file.name().ends_with('/') {
-            fs::create_dir_all(&outpath).unwrap();
+            fs::create_dir_all(&outpath)?;
         } else {
             // if let Some(p) = outpath.parent() {
             //    if !p.exists() {
@@ -157,12 +188,12 @@ fn extract_zip(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error
 
             if let Some(parent) = outpath.parent() {
                 if !parent.exists() {
-                    fs::create_dir_all(parent).unwrap();
+                    fs::create_dir_all(parent)?;
                 }
             }
 
-            let mut outfile = fs::File::create(&outpath).unwrap();
-            io::copy(&mut file, &mut outfile).unwrap();
+            let mut outfile = fs::File::create(&outpath)?;
+            io::copy(&mut file, &mut outfile)?;
         }
     }
 
@@ -175,7 +206,7 @@ use unrar::Archive;
 fn extract_rar(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>> {
     println!("Extracting RAR ({}) to ({})", archive_path, extract_to);
 
-    let mut archive = Archive::new(archive_path).open_for_processing().unwrap();
+    let mut archive = Archive::new(archive_path).open_for_processing()?;
 
     while let Some(header) = archive.read_header().unwrap() {
         println!(
@@ -200,34 +231,41 @@ fn extract_7z(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>
 }
 
 fn copy_to_dir(
-    extract_to: &Path,
+    copy_to: &Path,
+    profile: &PathBuf,
     start_point: &Path,
     overwrite: bool,
+    log_path: &PathBuf,
 ) -> Result<(), Box<dyn Error>> {
     let mut walk_dir = PathBuf::new();
     match env::current_dir() {
         Ok(path) => {
-            walk_dir.push(path);
-            walk_dir.push(".temp/");
-            walk_dir.push(start_point);
+            walk_dir = path.join(&profile).join(start_point);
+            //walk_dir.push(path);
+            //walk_dir.push(".temp/");
+            //walk_dir.push(start_point);
         }
         Err(e) => {
-            println!("Failed to get current directory: {}", e);
+            eprintln!("Failed to get current directory: {}", e);
         }
     }
     println!(
         "Copying files from {:?} to ({:?})",
         walk_dir.display(),
-        extract_to
+        copy_to
     );
-
     for entry_result in fs::read_dir(&*walk_dir)? {
         let entry = entry_result?;
         let src_path = entry.path();
         let filename = entry.file_name();
-        let dst_path = extract_to.join(&filename);
+        let dst_path = copy_to.join(&filename);
         let metadata = entry.metadata()?;
 
+        println!(
+            "Entry is directory: {} ({})",
+            metadata.is_dir(),
+            src_path.display()
+        );
         if metadata.is_dir() {
             println!(
                 "Creating directory and copying contents: '{}' -> '{}'",
@@ -236,9 +274,21 @@ fn copy_to_dir(
             );
 
             let new_walk_dir = walk_dir.join(&filename);
-
-            fs::create_dir(&dst_path);
-            copy_to_dir(&dst_path, &new_walk_dir, overwrite)?;
+            match fs::create_dir(&dst_path) {
+                Ok(_) => {
+                    println!("Created directory: {}", dst_path.display());
+                }
+                Err(e) => match e.kind() {
+                    std::io::ErrorKind::AlreadyExists => {
+                        println!("Directory already exists: {}", dst_path.display());
+                    }
+                    _ => {
+                        println!("Failed to create directory: {}", e);
+                        return Err(e.into());
+                    }
+                },
+            }
+            copy_to_dir(&dst_path, &profile, &new_walk_dir, overwrite, &log_path)?;
         } else if metadata.is_file() {
             println!(
                 "Copying file: '{}' -> '{}'",
@@ -246,9 +296,24 @@ fn copy_to_dir(
                 dst_path.display()
             );
 
-            if dst_path.exists() && !overwrite {
-                println!("File already exists at: {}", dst_path.display());
-                continue;
+            if dst_path.exists() {
+                println!(
+                    "File already exists, writing to log: {}",
+                    dst_path.display()
+                );
+
+                let mut file = OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(&log_path)?;
+
+                let path_str = format!("{}\n", &dst_path.to_string_lossy());
+
+                file.write_all(path_str.as_bytes())?;
+
+                if !overwrite {
+                    continue;
+                }
             }
 
             fs::copy(&src_path, &dst_path)?;
