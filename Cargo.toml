@@ -5,10 +5,11 @@ edition = "2024"
 
 [dependencies]
 sevenz-rust2 = "0.13.1"
-slint = "1.10.0"
+slint = "1.11.0"
 unrar = "0.5.8"
 zip = "2.6.1"
 rfd = "0.15.2"
 
 [build-dependencies]
-slint-build = "1.10.0"
+slint-build = "1.11.0"
+

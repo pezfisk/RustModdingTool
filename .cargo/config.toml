@@ -1,0 +1,2 @@
+[env]
+SLINT_BACKEND = "winit"

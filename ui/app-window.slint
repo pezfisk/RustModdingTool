@@ -1,4 +1,4 @@
-import { Button, VerticalBox, LineEdit, Switch } from "std-widgets.slint";
+import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     in-out property <string> footer: "";
@@ -6,6 +6,7 @@ export component AppWindow inherits Window {
     in-out property <string> game_path: "";
     in-out property <bool> overwrite: true;
     in-out property <bool> direct: false;
+    in-out property <bool> show_about_window: false;
 
     callback request_archive_path();
     callback request_game_path();
@@ -14,6 +15,19 @@ export component AppWindow inherits Window {
     title: "Game Modding Tool";
     min-height: 150px;
     min-width: 600px;
+
+    MenuBar {
+        Menu {
+            title: @tr("Help");
+            MenuItem {
+                title: @tr("About");
+
+                activated => {
+                    about_popup.show();
+                }
+            }
+        }
+    }
 
     VerticalLayout {
         spacing: 10px;
@@ -110,6 +124,38 @@ export component AppWindow inherits Window {
             Text {
                 text: root.footer;
                 horizontal-alignment: center;
+            }
+        }
+    }
+
+    about_popup := PopupWindow {
+
+        close-on-click: false;
+
+        Rectangle {
+            background: root.background;
+            VerticalLayout {
+                padding: 16px;
+                VerticalLayout {
+                    Text {
+                        text: "Game modding tool";
+                    }
+
+                    Text {
+                        text: "Version 0.1.0";
+                    }
+
+                    Text {
+                        text: "Inverse Software";
+                    }
+                }
+
+                StandardButton {
+                    kind: ok;
+                    clicked => {
+                        about_popup.close();
+                    }
+                }
             }
         }
     }
