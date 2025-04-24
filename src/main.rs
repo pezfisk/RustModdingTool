@@ -144,7 +144,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn extract_file(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>> {
     if let Some(extension) = Path::new(&archive_path).extension() {
-        let __result = match extension.to_str().unwrap() {
+        let extract_to = format!("{}/extracted", extract_to);
+        let _result = match extension.to_str().unwrap() {
             "zip" => extract_zip(&archive_path, &extract_to),
             "rar" => extract_rar(&archive_path, &extract_to),
             "7z" => extract_7z(&archive_path, &extract_to),
