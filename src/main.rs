@@ -58,6 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 None => String::from(".temp/Unknown/"),
             };
             let overwrite = ui_copy.get_overwrite();
+            let symlink = ui_copy.get_symlink();
             let exts = ["zip", "rar", "7z"];
 
             let _ = fs::remove_dir_all(match env::current_dir() {
@@ -69,6 +70,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             });
 
             println!("Path: '{}'", path.display());
+            ui_copy.set_progress(0.1);
             if path.exists() {
                 for entry in fs::read_dir(&*path).unwrap() {
                     let entry = entry.unwrap();
@@ -87,6 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                                         ui.set_footer(SharedString::from(
                                             "Succesfully extracted files",
                                         ));
+                                        ui.set_progress(0.5);
                                     }
 
                                     println!("Now copying over to target directory");
@@ -100,6 +103,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                                         Path::new(""),
                                         overwrite,
                                         &log_path,
+                                        symlink,
                                     ) {
                                         Ok(_) => {
                                             if let Some(ui) = ui_handle.upgrade() {
@@ -107,6 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                                                 ui.set_footer(SharedString::from(
                                                     "Succesfully copied files",
                                                 ));
+                                                ui.set_progress(1.0);
                                             }
                                         }
                                         Err(e) => {
@@ -237,6 +242,7 @@ fn copy_to_dir(
     start_point: &Path,
     overwrite: bool,
     log_path: &PathBuf,
+    symlink: bool,
 ) -> Result<(), Box<dyn Error>> {
     let mut walk_dir = PathBuf::new();
     match env::current_dir() {
@@ -289,7 +295,14 @@ fn copy_to_dir(
                     }
                 },
             }
-            copy_to_dir(&dst_path, &profile, &new_walk_dir, overwrite, &log_path)?;
+            copy_to_dir(
+                &dst_path,
+                &profile,
+                &new_walk_dir,
+                overwrite,
+                &log_path,
+                symlink,
+            )?;
         } else if metadata.is_file() {
             println!(
                 "Copying file: '{}' -> '{}'",
@@ -317,9 +330,34 @@ fn copy_to_dir(
                 }
             }
 
-            fs::copy(&src_path, &dst_path)?;
+            if !symlink {
+                println!("Copying file");
+                fs::copy(&src_path, &dst_path)?;
+            } else {
+                println!("Creating symlink");
+
+                if dst_path.exists() {
+                    println!("Removing old copy/symlink");
+                    fs::remove_file(&dst_path)?;
+                }
+                create_symlink(&src_path, &dst_path)?;
+            }
         }
     }
 
+    Ok(())
+}
+
+#[cfg(target_family = "unix")]
+fn create_symlink(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
+    std::os::unix::fs::symlink(src, dst)?;
+    Ok(())
+}
+
+#[cfg(target_family = "windows")]
+fn create_symlink(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
+    if !src.is_dir() {
+        std::os::windows::fs::symlink_file(src, dst)?;
+    }
     Ok(())
 }

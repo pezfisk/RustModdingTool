@@ -1,12 +1,15 @@
-import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox } from "std-widgets.slint";
+import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox, ProgressIndicator } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
+    in-out property <float> progress: 0.0;
     in-out property <string> footer: "";
     in-out property <string> archive_path: "";
     in-out property <string> game_path: "";
     in-out property <bool> overwrite: true;
     in-out property <bool> direct: false;
     in-out property <bool> show_about_window: false;
+    in-out property <bool> symlink: true;
+    in-out property <bool> experimental: false;
 
     callback request_archive_path();
     callback request_game_path();
@@ -17,6 +20,16 @@ export component AppWindow inherits Window {
     min-width: 600px;
 
     MenuBar {
+        Menu {
+            title: @tr("Options");
+            MenuItem {
+                title: @tr("Enable experimental and legacy options");
+                activated => {
+                    root.experimental = !root.experimental;
+                }
+            }
+        }
+
         Menu {
             title: @tr("Help");
             MenuItem {
@@ -92,18 +105,9 @@ export component AppWindow inherits Window {
                     spacing: 25px;
                     Switch {
                         text: "Overwrite existing files";
-                        checked: true;
+                        checked: root.overwrite;
                         toggled() => {
                             root.overwrite = !root.overwrite;
-                        }
-                    }
-
-                    Switch {
-                        text: "Extract directly (Faster - Less disk usage - Can't create backup)";
-                        checked: false;
-                        toggled() => {
-                            root.overwrite = true;
-                            root.direct = !root.direct;
                         }
                     }
                 }
@@ -111,6 +115,37 @@ export component AppWindow inherits Window {
                 Text {
                     horizontal-alignment: center;
                     text: "(Backups not yet implemented, but not supported when extracting directly to game directory)";
+                }
+            }
+
+            HorizontalLayout {
+                alignment: center;
+                visible: root.experimental;
+                VerticalLayout {
+                    spacing: 10px;
+                    Text {
+                        text: "Experimental features";
+                        horizontal-alignment: center;
+                    }
+
+                    HorizontalLayout {
+                        spacing: 10px;
+                        Switch {
+                            text: "Copy instead of symlink";
+                            checked: !root.symlink;
+                            toggled() => {
+                                root.symlink = !root.symlink;
+                            }
+                        }
+
+                        Switch {
+                            text: "Extract directly (Faster - Less disk usage - Can't create backup)";
+                            checked: root.direct;
+                            toggled() => {
+                                root.direct = !root.direct;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -126,6 +161,12 @@ export component AppWindow inherits Window {
                 horizontal-alignment: center;
             }
         }
+
+        ProgressIndicator {
+            visible: false;
+            height: 10px;
+            progress: root.progress;
+        }
     }
 
     about_popup := PopupWindow {
@@ -134,6 +175,7 @@ export component AppWindow inherits Window {
 
         Rectangle {
             background: root.background;
+            border-color: lightgray;
             border-width: 1px;
 
             VerticalLayout {
@@ -144,11 +186,15 @@ export component AppWindow inherits Window {
                     }
 
                     Text {
-                        text: "Version 0.1.0";
+                        text: "Version 0.2.0";
                     }
 
                     Text {
                         text: "Inverse Software";
+                    }
+
+                    Text {
+                        text: "Contact at: @pezfisk on discord";
                     }
                 }
 
