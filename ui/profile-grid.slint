@@ -1,0 +1,15 @@
+import { ProfileTile, ProfileData } from "profile-images.slint";
+
+export component ProfileGrid {
+    in property <[ProfileData]> profiles;
+    in-out property <int> selected-index: 0;
+
+    GridLayout {
+        padding: 16px;
+        spacing: 16px;
+
+        for profile[index] in profiles: ProfileTile {
+            //title: profile;
+        }
+    }
+}

@@ -1,4 +1,6 @@
-import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox, ProgressIndicator } from "std-widgets.slint";
+import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox, ProgressIndicator, TextEdit } from "std-widgets.slint";
+import { ProfileTile, ProfileData } from "profile-images.slint";
+import { ProfileGrid } from "profile-grid.slint";
 
 export component AppWindow inherits Window {
     in-out property <float> progress: 0.0;
@@ -10,6 +12,10 @@ export component AppWindow inherits Window {
     in-out property <bool> show_about_window: false;
     in-out property <bool> symlink: true;
     in-out property <bool> experimental: false;
+
+    in-out property <[ProfileData]> profiles: [];
+
+    private property <int> tab_index: 0;
 
     callback request_archive_path();
     callback request_game_path();
@@ -46,127 +52,161 @@ export component AppWindow inherits Window {
         spacing: 10px;
         padding: 50px;
 
-        VerticalLayout {
-            Text {
-                text: "Path to directory containing compressed files ( RAR - ZIP - 7z)";
-                horizontal-alignment: center;
-            }
-
-            HorizontalLayout {
-                spacing: 10px;
-                LineEdit {
-                    text: root.archive_path;
-                    edited(text) => {
-                        root.archive_path = text;
-                    }
-                }
-
-                Button {
-                    width: 200px;
-                    text: "Open directory";
-                    clicked => {
-                        root.request_archive_path();
-                    }
-                }
-            }
-        }
-
-        VerticalLayout {
-            Text {
-                text: "Path to game directory";
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-
-            HorizontalLayout {
-                spacing: 10px;
-                LineEdit {
-                    text: root.game_path;
-                    edited(text) => {
-                        root.game_path = text;
-                    }
-                }
-
-                Button {
-                    width: 200px;
-                    text: "Open game location";
-                    clicked => {
-                        root.request_game_path();
-                    }
-                }
-            }
-        }
-
-        VerticalLayout {
-            spacing: 10px;
-            VerticalLayout {
-                HorizontalLayout {
-                    alignment: center;
-                    spacing: 25px;
-                    Switch {
-                        text: "Overwrite existing files";
-                        checked: root.overwrite;
-                        toggled() => {
-                            root.overwrite = !root.overwrite;
-                        }
-                    }
-                }
-
-                Text {
-                    horizontal-alignment: center;
-                    text: "(Backups not yet implemented, but not supported when extracting directly to game directory)";
-                }
-            }
-
-            HorizontalLayout {
-                alignment: center;
-                visible: root.experimental;
-                VerticalLayout {
-                    spacing: 10px;
-                    Text {
-                        text: "Experimental features";
-                        horizontal-alignment: center;
-                    }
-
-                    HorizontalLayout {
-                        spacing: 10px;
-                        Switch {
-                            text: "Copy instead of symlink";
-                            checked: !root.symlink;
-                            toggled() => {
-                                root.symlink = !root.symlink;
-                            }
-                        }
-
-                        Switch {
-                            text: "Extract directly (Faster - Less disk usage - Can't create backup)";
-                            checked: root.direct;
-                            toggled() => {
-                                root.direct = !root.direct;
-                            }
-                        }
-                    }
+        HorizontalLayout {
+            height: 40px;
+            Button {
+                text: "Game modder";
+                checkable: true;
+                checked: tab_index == 0;
+                clicked => {
+                    tab_index = 0;
                 }
             }
 
             Button {
-                text: "Uncompress and move into game dir";
+                text: "Game manager";
+                checkable: true;
+                checked: tab_index == 1;
                 clicked => {
-                    root.mod();
+                    tab_index = 1;
+                }
+            }
+        }
+
+        if (tab_index == 0): VerticalLayout {
+            // FIST TAB -------------------------------------------------------------------
+            VerticalLayout {
+                Text {
+                    text: "Path to directory containing compressed files ( RAR - ZIP - 7z )";
+                    horizontal-alignment: center;
+                }
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    LineEdit {
+                        text: root.archive_path;
+                        edited(text) => {
+                            root.archive_path = text;
+                        }
+                    }
+
+                    Button {
+                        width: 200px;
+                        text: "Open directory";
+                        clicked => {
+                            root.request_archive_path();
+                        }
+                    }
                 }
             }
 
-            Text {
-                text: root.footer;
-                horizontal-alignment: center;
+            VerticalLayout {
+                Text {
+                    text: "Path to game directory";
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    LineEdit {
+                        text: root.game_path;
+                        edited(text) => {
+                            root.game_path = text;
+                        }
+                    }
+
+                    Button {
+                        width: 200px;
+                        text: "Open game location";
+                        clicked => {
+                            root.request_game_path();
+                        }
+                    }
+                }
+            }
+
+            VerticalLayout {
+                spacing: 10px;
+                VerticalLayout {
+                    HorizontalLayout {
+                        alignment: center;
+                        spacing: 25px;
+                        Switch {
+                            text: "Overwrite existing files";
+                            checked: root.overwrite;
+                            toggled() => {
+                                root.overwrite = !root.overwrite;
+                            }
+                        }
+                    }
+
+                    Text {
+                        horizontal-alignment: center;
+                        text: "(Backups not yet implemented, but not supported when extracting directly to game directory)";
+                    }
+                }
+
+                if (root.experimental): HorizontalLayout {
+                    alignment: center;
+                    VerticalLayout {
+                        spacing: 10px;
+                        Text {
+                            text: "Experimental features";
+                            horizontal-alignment: center;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Switch {
+                                text: "Copy instead of symlink";
+                                checked: !root.symlink;
+                                toggled() => {
+                                    root.symlink = !root.symlink;
+                                }
+                            }
+
+                            Switch {
+                                text: "Extract directly (Faster - Less disk usage - Can't create backup)";
+                                checked: root.direct;
+                                toggled() => {
+                                    root.direct = !root.direct;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Button {
+                    text: "Uncompress and move into game dir";
+                    clicked => {
+                        root.mod();
+                    }
+                }
+
+                Text {
+                    text: root.footer;
+                    horizontal-alignment: center;
+                }
+            }
+
+            ProgressIndicator {
+                visible: false;
+                height: 10px;
+                progress: root.progress;
             }
         }
+        // END OF FIRST TAB -------------------------------------------------
+        if(tab_index == 1): VerticalLayout {
+            // SECOND TAB -------------------------------------------------------------------
 
-        ProgressIndicator {
-            visible: false;
-            height: 10px;
-            progress: root.progress;
+          for profile in root.profiles: ProfileTile {
+                cover-image: profile.cover_image;
+                title: profile.title;
+                year: profile.year;
+            }
         }
+        // END OF SECOND TAB -------------------------------------------------
     }
 
     about_popup := PopupWindow {
@@ -186,7 +226,7 @@ export component AppWindow inherits Window {
                     }
 
                     Text {
-                        text: "Version 0.2.0";
+                        text: "Version 0.2.1";
                     }
 
                     Text {

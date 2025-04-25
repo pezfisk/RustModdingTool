@@ -1,0 +1,85 @@
+import { Palette, StyleMetrics } from "std-widgets.slint";
+
+export struct ProfileData {
+  cover_image: image,
+  title: string,
+  year: string,
+}
+
+export component ProfileTile {
+    in property <image> cover-image;
+    in property <string> title: "Cyberpunk 2077";
+    in property <string> year: "(2020)";
+
+    Rectangle {
+        width: 200px;
+        height: 300px;
+        background: Palette.background;
+        border-radius: StyleMetrics.layout-padding;
+        border-width: StyleMetrics.layout-spacing;
+        border-color: Palette.accent-foreground;
+        drop-shadow-color: #00000080;
+        drop-shadow-offset-x: 2px;
+        drop-shadow-offset-y: 2px;
+        drop-shadow-blur: 5px;
+
+        VerticalLayout {
+            padding: 0px;
+            spacing: 0px;
+
+            Rectangle {
+                height: 240px;
+                Image {
+                    source: cover-image;
+                    height: parent.height;
+                    width: parent.width;
+                    image-fit: cover;
+                }
+            }
+
+            Rectangle {
+                height: 60px;
+                background: #0f0f0f;
+
+                VerticalLayout {
+                    padding: 8px;
+                    spacing: 2px;
+
+                    Text {
+                        text: root.title;
+                        color: Palette.selection-background;
+                        font-size: 14px;
+                        font-weight: 600;
+                    }
+
+                    Text {
+                        text: root.year;
+                        color: Palette.control-foreground;
+                        font-size: 12px;
+                    }
+                }
+            }
+        }
+
+        // Hover effect
+//        states [
+//            hover when root.has-hover: {
+//                border-color: #666666;
+//                scale: 1.02;
+//                animate
+//                scale {
+//                    duration: 200ms;
+//                    easing: ease-in-out;
+//                }
+//            }
+//        ]
+
+        // Mouse area for hover detection
+        TouchArea {
+            clicked => {
+                // Handle click event
+                debug("Game tile clicked");
+            }
+        }
+    }
+}
