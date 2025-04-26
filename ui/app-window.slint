@@ -20,9 +20,10 @@ export component AppWindow inherits Window {
     callback request_archive_path();
     callback request_game_path();
     callback mod();
+    callback restore();
 
     title: "Game Modding Tool";
-    min-height: 150px;
+    min-height: 500px;
     min-width: 600px;
 
     MenuBar {
@@ -207,6 +208,13 @@ export component AppWindow inherits Window {
             }
         }
         // END OF SECOND TAB -------------------------------------------------
+    }
+
+    Button {
+        text: "Test restore";
+        clicked => {
+            root.restore();
+        }
     }
 
     about_popup := PopupWindow {

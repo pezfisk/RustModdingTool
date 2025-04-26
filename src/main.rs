@@ -10,8 +10,8 @@ use std::{
     rc::Rc,
 };
 
-mod copy;
 mod extract;
+mod file_manager;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let window = AppWindow::new()?;
@@ -64,7 +64,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             let exts = ["zip", "rar", "7z"];
 
             let _ = fs::remove_dir_all(match env::current_dir() {
-                Ok(path) => path.join(&extract_to),
+                Ok(path) => {
+                    if !path.join(&extract_to).exists() {
+                        path.join(&extract_to)
+                    } else {
+                        PathBuf::new()
+                    }
+                }
                 Err(e) => {
                     println!("Failed to get current directory: {}", e);
                     PathBuf::new()
@@ -99,9 +105,23 @@ fn main() -> Result<(), Box<dyn Error>> {
                                     let log_path = PathBuf::from(&extract_to).join("existing.txt");
                                     println!("Path: {}", game_path.display());
 
-                                    match copy::copy_to_dir(
+                                    match fs::create_dir(&PathBuf::from(&extract_to).join("bak")) {
+                                        Ok(_) => {}
+                                        Err(e) => {
+                                            if let Some(ui) = ui_handle.upgrade() {
+                                                println!(
+                                                    "Failed to create backup directory: {}",
+                                                    e
+                                                );
+                                                let error = format!("Error: {}", e);
+                                                ui.set_footer(SharedString::from(error));
+                                            }
+                                        }
+                                    }
+
+                                    match file_manager::copy_to_dir(
                                         &game_path,
-                                        &PathBuf::from(&extract_to).join("extracted"),
+                                        &PathBuf::from(&extract_to),
                                         Path::new(""),
                                         overwrite,
                                         &log_path,
@@ -141,6 +161,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                     ui.set_footer(SharedString::from("No archive selected"));
                 }
             }
+        });
+    }
+
+    {
+        let ui_copy = Rc::clone(&ui);
+
+        ui.on_restore(move || {
+            let profile = PathBuf::from("/home/marc/devel/OxideManager/.temp/2077TestSuite/");
+            file_manager::restore(&profile);
         });
     }
 

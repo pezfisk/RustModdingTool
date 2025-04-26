@@ -9,19 +9,19 @@ A simple GUI tool built with [Slint](https://slint.dev/) and Rust to help uncomp
 *   Select a source directory containing compressed game mod files (`.rar`, `.zip`, `.7z`).
 *   Select a target game directory.
 *   Uncompresses archives found in the source directory into a temporary location (`.temp/`).
-    *   Supports RAR, ZIP, and 7z formats (using appropriate Rust crates like `unrar`, `zip`, `sevenz-rust`).
 *   Moves the uncompressed contents from the temporary directory into the target game directory.
 *   Options:
     *   Overwrite existing files in the target directory.
-    *   Create symlinks instead of moving files (useful for some mod managers, platform-dependent).
     *   Extract directly to the game directory (faster, less disk usage, but prevents creating backups).
 *   Cross-platform GUI built with Slint.
+*   Safety first: Usage of symlinks instead of copying over extracted files.
 
 ## Getting Started
 
 ### Installation
 
 **Recommended:** Download the latest pre-built binary for your operating system from the [**GitHub Releases**](https://github.com/pezfisk/OxideManager/releases) page.
+
 <!-- TODO: Create releases with binaries for Windows, macOS, Linux if possible -->
 
 **Alternatively:** Build from source (see below).
@@ -33,7 +33,7 @@ A simple GUI tool built with [Slint](https://slint.dev/) and Rust to help uncomp
 1.  **Rust Toolchain:** Install Rust and Cargo from [rustup.rs](https://rustup.rs/).
 2.  **Slint Dependencies:** Slint requires a C++ compiler and CMake. Follow the platform-specific instructions on the [Slint Setup Documentation](https://slint.dev/docs/get-started/setup). Common requirements:
     *   **Linux:** `build-essential`, `cmake`, `pkg-config`, `libfontconfig-dev`, `libfreetype6-dev`, `libxkbcommon-dev` (or equivalents for your distro).
-    *   **Windows:** Visual Studio Build Tools (with C++ workload) or MSYS2/MinGW, CMake.
+    *   **Windows:** Visual Studio Build Tools (with C++ workload).
     *   **macOS:** Xcode Command Line Tools, CMake.
 3.  **Git:** To clone the repository.
 
