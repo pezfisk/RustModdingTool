@@ -5,7 +5,8 @@ use slint::{ComponentHandle, Image, ModelRc, SharedString, VecModel};
 use std::{
     env,
     error::Error,
-    fs,
+    fs::{self, OpenOptions},
+    io::Write,
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -18,6 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let ui = Rc::new(window);
 
     let ui_handle = ui.as_weak();
+    let overextract = true;
 
     println!("Hello, world!");
 
@@ -105,16 +107,36 @@ fn main() -> Result<(), Box<dyn Error>> {
                                     let log_path = PathBuf::from(&extract_to).join("existing.txt");
                                     println!("Path: {}", game_path.display());
 
-                                    match fs::create_dir(&PathBuf::from(&extract_to).join("bak")) {
-                                        Ok(_) => {}
-                                        Err(e) => {
-                                            if let Some(ui) = ui_handle.upgrade() {
-                                                println!(
-                                                    "Failed to create backup directory: {}",
-                                                    e
-                                                );
-                                                let error = format!("Error: {}", e);
-                                                ui.set_footer(SharedString::from(error));
+                                    {
+                                        if log_path.exists() {
+                                            match fs::remove_file(&log_path) {
+                                                Ok(_) => {}
+                                                Err(e) => {
+                                                    if let Some(ui) = ui_handle.upgrade() {
+                                                        println!(
+                                                            "Failed to remove log file: {}",
+                                                            e
+                                                        );
+                                                        let error = format!("Error: {}", e);
+                                                        ui.set_footer(SharedString::from(error));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    {
+                                        let mut log_file = fs::File::create(&log_path).unwrap();
+                                        match log_file.write_all(
+                                            format!("{}\n", &game_path.display()).as_bytes(),
+                                        ) {
+                                            Ok(_) => {}
+                                            Err(e) => {
+                                                if let Some(ui) = ui_handle.upgrade() {
+                                                    println!("Failed to write log file: {}", e);
+                                                    let error = format!("Error: {}", e);
+                                                    ui.set_footer(SharedString::from(error));
+                                                }
                                             }
                                         }
                                     }

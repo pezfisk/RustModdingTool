@@ -3,8 +3,8 @@ use std::{
     error::Error,
     fs::{self, OpenOptions, read_to_string},
     io::prelude::*,
-    path::Path,
-    path::PathBuf,
+    os::unix::process,
+    path::{Path, PathBuf},
 };
 
 pub fn copy_to_dir(
@@ -19,9 +19,6 @@ pub fn copy_to_dir(
     match env::current_dir() {
         Ok(path) => {
             walk_dir = path.join(&profile).join("extracted").join(start_point);
-            //walk_dir.push(path);
-            //walk_dir.push(".temp/");
-            //walk_dir.push(start_point);
         }
         Err(e) => {
             eprintln!("Failed to get current directory: {}", e);
@@ -76,6 +73,13 @@ pub fn copy_to_dir(
             )?;
         } else if metadata.is_file() {
             if dst_path.exists() {
+                let copy_bak_to = split_path(&dst_path, profile).unwrap();
+                println!(
+                    "Backing up file: '{}' -> '{}'",
+                    dst_path.display(),
+                    copy_bak_to.display()
+                );
+                create_bak(&dst_path, &copy_bak_to)?;
                 println!(
                     "File already exists, writing to log: {}",
                     dst_path.display()
@@ -89,15 +93,6 @@ pub fn copy_to_dir(
                 let path_str = format!("{}\n", &dst_path.to_string_lossy());
 
                 file.write_all(path_str.as_bytes())?;
-
-                let copy_bak_to = split_path(&dst_path, profile).unwrap();
-                println!(
-                    "Backing up file: '{}' -> '{}'",
-                    dst_path.display(),
-                    copy_bak_to.display()
-                );
-                create_bak_folders(&dst_path, &copy_bak_to, profile, &PathBuf::new())?;
-
                 if !overwrite {
                     continue;
                 }
@@ -150,7 +145,41 @@ pub fn restore(profile: &PathBuf) -> Result<(), Box<dyn Error>> {
         "Restoring profile ({}) to original state",
         profile.display()
     );
-    let profile_existing = read_to_string(&profile.join("existing.txt"))?.lines();
+    let existing_file_path = profile.join("existing.txt");
+    let file_content = fs::read_to_string(&existing_file_path)?;
+    let profile_existing = file_content.lines();
+    let profile_skip = profile_existing.skip(1);
+    let profile_filename = profile.file_name().unwrap();
+
+    println!("Restoring files from backup");
+    for path in profile_skip {
+        let copy_bak_to = match path.split_once(profile_filename.to_str().unwrap()) {
+            Some((_, copy_bak_to)) => PathBuf::from(copy_bak_to),
+            None => continue,
+        };
+        let temp_dir = PathBuf::from(format!("{}bak{}", profile.display(), copy_bak_to.display()));
+
+        println!("Restoring file: '{}' -> '{}'", temp_dir.display(), path);
+
+        fs::rename(&temp_dir, PathBuf::from(path))?;
+    }
+
+    println!("Removing symlinks");
+    let dst = match file_content.lines().next().map(|line| line.to_string()) {
+        Some(line) => line,
+        None => return Ok(()),
+    };
+    println!("Restoring directory: '{}'", dst);
+
+    match remove_symlinks(&PathBuf::from(dst)) {
+        Ok(_) => {
+            println!("Removed symlinks correctly");
+        }
+        Err(e) => {
+            println!("Failed to remove symlinks: {}", e);
+            return Err(e.into());
+        }
+    }
 
     Ok(())
 }
@@ -177,17 +206,33 @@ fn split_path(path: &PathBuf, profile: &PathBuf) -> Option<PathBuf> {
         where_to
     ));
 
-    Some(PathBuf::from(complete_path))
+    Some(complete_path)
 }
 
-fn create_bak_folders(src: &PathBuf, dst: &PathBuf) -> Result<(), Box<dyn Error>> {
+fn create_bak(src: &PathBuf, dst: &PathBuf) -> Result<(), Box<dyn Error>> {
     if let Some(parent) = dst.parent() {
         if !parent.exists() {
             fs::create_dir_all(parent)?;
         }
     }
 
-    fs::copy(&src, &dst)?;
+    fs::rename(&src, &dst)?;
+    println!("src: {}, dst: {}", src.display(), dst.display());
+
+    Ok(())
+}
+
+fn remove_symlinks(path: &Path) -> Result<(), Box<dyn Error>> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let metadata = entry.metadata()?;
+
+        if metadata.is_dir() {
+            remove_symlinks(&entry.path())?;
+        } else if metadata.file_type().is_symlink() {
+            fs::remove_file(&entry.path())?;
+        }
+    }
 
     Ok(())
 }
