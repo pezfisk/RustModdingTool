@@ -1,15 +1,20 @@
 import { Palette, StyleMetrics } from "std-widgets.slint";
+import { ProfileState } from "profile-state.slint";
 
 export struct ProfileData {
   cover_image: image,
   title: string,
   year: string,
+  path_to_profile: string,
 }
 
 export component ProfileTile {
     in property <image> cover-image;
-    in property <string> title: "Cyberpunk 2077";
-    in property <string> year: "(2020)";
+    in property <string> title;
+    in property <string> year;
+    in property <string> path_to_profile;
+
+    callback open_game();
 
     Rectangle {
         width: 200px;
@@ -78,7 +83,11 @@ export component ProfileTile {
         TouchArea {
             clicked => {
                 // Handle click event
-                debug("Game tile clicked");
+                ProfileState.title = root.title;
+                ProfileState.year = root.year;
+                ProfileState.path_to_profile = root.path_to_profile;
+                ProfileState.cover_image = root.cover_image;
+                root.open_game()
             }
         }
     }

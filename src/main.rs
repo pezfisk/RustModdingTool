@@ -1,8 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 slint::include_modules!();
+use ini::Ini;
 use rfd::FileDialog;
-use slint::{ComponentHandle, Image, ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, Image, ModelRc, SharedString, VecModel, Weak};
 use std::{
+    cell::RefCell,
     env,
     error::Error,
     fs::{self, OpenOptions},
@@ -13,6 +15,7 @@ use std::{
 
 mod extract;
 mod file_manager;
+mod profile_manager;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let window = AppWindow::new()?;
@@ -156,6 +159,38 @@ fn main() -> Result<(), Box<dyn Error>> {
                                                     "Succesfully copied files",
                                                 ));
                                                 ui.set_progress(1.0);
+
+                                                let title = &game_path
+                                                    .file_name()
+                                                    .unwrap()
+                                                    .to_string_lossy();
+
+                                                let temp_path = match env::current_dir() {
+                                                    Ok(path) => {
+                                                        format!(
+                                                            "{}/{}",
+                                                            path.display(),
+                                                            &extract_to
+                                                        )
+                                                    }
+                                                    Err(e) => {
+                                                        println!(
+                                                            "Failed to get current directory: {}",
+                                                            e
+                                                        );
+                                                        String::from("")
+                                                    }
+                                                };
+                                                let path_profile = &game_path.to_string_lossy();
+
+                                                profile_manager::save_data(
+                                                    title,
+                                                    &temp_path,
+                                                    path_profile,
+                                                )
+                                                .unwrap();
+
+                                                reload_profiles(&ui_copy);
                                             }
                                         }
                                         Err(e) => {
@@ -189,8 +224,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         let ui_copy = Rc::clone(&ui);
 
-        ui.on_restore(move || {
-            let profile = PathBuf::from("/home/marc/devel/OxideManager/.temp/2077TestSuite/");
+        ui.on_restore(move |path_to_profile| {
+            let profile = PathBuf::from(path_to_profile.to_string());
             file_manager::restore(&profile);
         });
     }
@@ -198,19 +233,51 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         let ui_copy = Rc::clone(&ui);
 
-        let profiles = vec![ProfileData {
-            cover_image: Image::load_from_path(Path::new("test.png"))?,
-            title: "Profile Title".into(),
-            year: "2025".into(),
-        }];
-
-        let profiles_model = Rc::new(VecModel::from(profiles));
-        let profiles_model_rc = ModelRc::from(profiles_model);
-
-        ui_copy.set_profiles(profiles_model_rc);
+        ui.on_reload_profiles(move || {
+            reload_profiles(&ui_copy).unwrap();
+        });
     }
 
     ui.run()?;
+
+    Ok(())
+}
+
+fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
+    let mut profiles = Vec::new();
+
+    // Iterate through directory entries
+    for entry in std::fs::read_dir(PathBuf::from("profiles"))? {
+        let entry = entry?;
+        let path = entry.path();
+
+        // Skip if not a file
+        if !path.is_file() {
+            continue;
+        }
+
+        // Read and parse INI file
+        if let Ok(conf) = Ini::load_from_file(&path) {
+            // Try to get the "profile" section
+            if let Some(section) = conf.section(Some("profile")) {
+                // Create ProfileData with proper error handling
+                let profile_data = ProfileData {
+                    cover_image: slint::Image::load_from_path(Path::new("notfound.png"))
+                        .unwrap_or_default(),
+                    title: section.get("title").unwrap_or("Unknown").to_string().into(),
+                    year: section.get("year").unwrap_or("Unknown").to_string().into(),
+                    path_to_profile: section.get("temp_path").unwrap_or("").to_string().into(),
+                };
+
+                profiles.push(profile_data);
+            }
+        }
+    }
+
+    // Create and set the model
+    let profiles_model = Rc::new(VecModel::from(profiles));
+    let profiles_model_rc = ModelRc::from(profiles_model);
+    ui.set_profiles(profiles_model_rc);
 
     Ok(())
 }

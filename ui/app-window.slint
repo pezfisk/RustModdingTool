@@ -1,6 +1,6 @@
-import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox, ProgressIndicator, TextEdit } from "std-widgets.slint";
+import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox, ProgressIndicator, TextEdit, StyleMetrics, Palette } from "std-widgets.slint";
 import { ProfileTile, ProfileData } from "profile-images.slint";
-import { ProfileGrid } from "profile-grid.slint";
+import { ProfileState } from "profile-state.slint";
 
 export component AppWindow inherits Window {
     in-out property <float> progress: 0.0;
@@ -17,10 +17,16 @@ export component AppWindow inherits Window {
 
     private property <int> tab_index: 0;
 
+    private property <image> selected_cover_image;
+    private property <string> selected_title;
+    private property <string> selected_year;
+    private property <string> selected_path_to_profile;
+
     callback request_archive_path();
     callback request_game_path();
     callback mod();
-    callback restore();
+    callback restore(string);
+    callback reload_profiles();
 
     title: "Game Modding Tool";
     min-height: 500px;
@@ -70,6 +76,7 @@ export component AppWindow inherits Window {
                 checked: tab_index == 1;
                 clicked => {
                     tab_index = 1;
+                    root.reload_profiles();
                 }
             }
         }
@@ -198,22 +205,79 @@ export component AppWindow inherits Window {
             }
         }
         // END OF FIRST TAB -------------------------------------------------
-        if(tab_index == 1): VerticalLayout {
+        if(tab_index == 1): HorizontalLayout {
             // SECOND TAB -------------------------------------------------------------------
-
           for profile in root.profiles: ProfileTile {
                 cover-image: profile.cover_image;
                 title: profile.title;
                 year: profile.year;
+                path_to_profile: profile.path_to_profile;
+
+                open_game() => {
+                    root.selected_cover_image = ProfileState.cover_image;
+                    root.selected_title = ProfileState.title;
+                    root.selected_year = ProfileState.year;
+                    root.selected_path_to_profile = ProfileState.path_to_profile;
+                    root.tab_index = 2;
+                }
             }
         }
         // END OF SECOND TAB -------------------------------------------------
-    }
+        if (tab_index == 2): VerticalLayout {
+          // GameTab
+          VerticalLayout {
+                spacing: StyleMetrics.layout-spacing;
+                padding: StyleMetrics.layout-padding;
 
-    Button {
-        text: "Test restore";
-        clicked => {
-            root.restore();
+                HorizontalLayout {
+                    spacing: StyleMetrics.layout-spacing;
+                    VerticalLayout {
+                        width: 600px;
+                        alignment: start;
+                        Image {
+                            source: root.selected_cover_image;
+                            horizontal-alignment: center;
+                            image-fit: contain;
+                        }
+                    }
+
+                    VerticalLayout {
+                        Text {
+                            text: root.selected_title;
+                            horizontal-alignment: center;
+                            font-size: 75px;
+                            color: Palette.selection-background;
+                        }
+
+                        Text {
+                            text: root.selected_year;
+                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: "Profile path: " + root.selected_path_to_profile;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: StyleMetrics.layout-spacing;
+                    Button {
+                        text: "Restore game";
+                        clicked => {
+                            root.restore(selected_path_to_profile);
+                        }
+                    }
+
+                    Button {
+                        text: "Back";
+                        clicked => {
+                            root.tab_index = 1;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -230,11 +294,11 @@ export component AppWindow inherits Window {
                 padding: 16px;
                 VerticalLayout {
                     Text {
-                        text: "Game modding tool";
+                        text: "Oxide Mod Manager";
                     }
 
                     Text {
-                        text: "Version 0.2.1";
+                        text: "Version 0.3.0";
                     }
 
                     Text {
