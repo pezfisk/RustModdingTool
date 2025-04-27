@@ -245,22 +245,21 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
     let mut profiles = Vec::new();
+	let profile_path = PathBuf::from("profiles");
+	if !profile_path.exists() {
+fs::create_dir_all(&profile_path);
+}
 
-    // Iterate through directory entries
     for entry in std::fs::read_dir(PathBuf::from("profiles"))? {
         let entry = entry?;
         let path = entry.path();
 
-        // Skip if not a file
         if !path.is_file() {
             continue;
         }
 
-        // Read and parse INI file
         if let Ok(conf) = Ini::load_from_file(&path) {
-            // Try to get the "profile" section
             if let Some(section) = conf.section(Some("profile")) {
-                // Create ProfileData with proper error handling
                 let profile_data = ProfileData {
                     cover_image: slint::Image::load_from_path(Path::new("notfound.png"))
                         .unwrap_or_default(),

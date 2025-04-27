@@ -3,7 +3,6 @@ use std::{
     error::Error,
     fs::{self, OpenOptions, read_to_string},
     io::prelude::*,
-    os::unix::process,
     path::{Path, PathBuf},
 };
 
