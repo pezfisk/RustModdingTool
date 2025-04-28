@@ -10,7 +10,7 @@ unrar = "0.5.8"
 zip = "2.6.1"
 rfd = "0.15.2"
 rust-ini = "0.21.1"
-steamgriddb_api = "0.3.1"
+#steamgriddb_api = "0.3.1"
 
 [build-dependencies]
 slint-build = "1.11.0"

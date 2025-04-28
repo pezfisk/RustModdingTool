@@ -4,7 +4,6 @@ use ini::Ini;
 use rfd::FileDialog;
 use slint::{ComponentHandle, Image, ModelRc, SharedString, VecModel, Weak};
 use std::{
-    cell::RefCell,
     env,
     error::Error,
     fs::{self, OpenOptions},
@@ -245,10 +244,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
     let mut profiles = Vec::new();
-	let profile_path = PathBuf::from("profiles");
-	if !profile_path.exists() {
-fs::create_dir_all(&profile_path);
-}
+    let profile_path = PathBuf::from("profiles");
 
     for entry in std::fs::read_dir(PathBuf::from("profiles"))? {
         let entry = entry?;
@@ -273,7 +269,6 @@ fs::create_dir_all(&profile_path);
         }
     }
 
-    // Create and set the model
     let profiles_model = Rc::new(VecModel::from(profiles));
     let profiles_model_rc = ModelRc::from(profiles_model);
     ui.set_profiles(profiles_model_rc);
