@@ -245,6 +245,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
     let mut profiles = Vec::new();
     let profile_path = PathBuf::from("profiles");
+    if !profile_path.exists() {
+        fs::create_dir_all(&profile_path);
+    }
 
     for entry in std::fs::read_dir(PathBuf::from("profiles"))? {
         let entry = entry?;
@@ -256,12 +259,29 @@ fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
 
         if let Ok(conf) = Ini::load_from_file(&path) {
             if let Some(section) = conf.section(Some("profile")) {
+                let title = section.get("title").unwrap_or("Unknown").to_string();
+                let try_image = section.get("cover_image");
+                let cover_image =
+                    match slint::Image::load_from_path(&PathBuf::from(try_image.unwrap())) {
+                        Ok(image) => image,
+                        Err(_) => {
+                            match slint::Image::load_from_path(&PathBuf::from(&format!(
+                                "profiles/{}.png",
+                                title
+                            ))) {
+                                Ok(image) => image,
+                                Err(_) => slint::Image::load_from_path(Path::new("notfound.png"))
+                                    .unwrap_or_default(),
+                            }
+                        }
+                    };
+
                 let profile_data = ProfileData {
-                    cover_image: slint::Image::load_from_path(Path::new("notfound.png"))
-                        .unwrap_or_default(),
-                    title: section.get("title").unwrap_or("Unknown").to_string().into(),
+                    cover_image: cover_image,
+                    title: title.into(),
                     year: section.get("year").unwrap_or("Unknown").to_string().into(),
                     path_to_profile: section.get("temp_path").unwrap_or("").to_string().into(),
+                    temp_path: section.get("profile_path").unwrap_or("").to_string().into(),
                 };
 
                 profiles.push(profile_data);

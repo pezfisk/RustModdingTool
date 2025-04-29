@@ -21,6 +21,9 @@ export component AppWindow inherits Window {
     private property <string> selected_title;
     private property <string> selected_year;
     private property <string> selected_path_to_profile;
+    private property <string> selected_temp_path;
+
+    private property <length> dynamic_font_size: min(self.width / 25, self.height / 25);
 
     callback request_archive_path();
     callback request_game_path();
@@ -28,9 +31,9 @@ export component AppWindow inherits Window {
     callback restore(string);
     callback reload_profiles();
 
-    title: "Game Modding Tool";
+    title: "Oxide Manager";
     min-height: 500px;
-    min-width: 600px;
+    min-width: 1000px;
 
     MenuBar {
         Menu {
@@ -56,10 +59,11 @@ export component AppWindow inherits Window {
     }
 
     VerticalLayout {
-        spacing: 10px;
+        spacing: StyleMetrics.layout-spacing;
         padding: 50px;
 
         HorizontalLayout {
+            spacing: StyleMetrics.layout-spacing;
             height: 40px;
             Button {
                 text: "Game modder";
@@ -84,13 +88,14 @@ export component AppWindow inherits Window {
         if (tab_index == 0): VerticalLayout {
             // FIST TAB -------------------------------------------------------------------
             VerticalLayout {
+                spacing: StyleMetrics.layout-spacing;
                 Text {
                     text: "Path to directory containing compressed files ( RAR - ZIP - 7z )";
                     horizontal-alignment: center;
                 }
 
                 HorizontalLayout {
-                    spacing: 10px;
+                    spacing: StyleMetrics.layout-spacing;
                     LineEdit {
                         text: root.archive_path;
                         edited(text) => {
@@ -109,6 +114,7 @@ export component AppWindow inherits Window {
             }
 
             VerticalLayout {
+                spacing: 10px;
                 Text {
                     text: "Path to game directory";
                     horizontal-alignment: center;
@@ -116,7 +122,7 @@ export component AppWindow inherits Window {
                 }
 
                 HorizontalLayout {
-                    spacing: 10px;
+                    spacing: StyleMetrics.layout-spacing;
                     LineEdit {
                         text: root.game_path;
                         edited(text) => {
@@ -232,31 +238,42 @@ export component AppWindow inherits Window {
                 HorizontalLayout {
                     spacing: StyleMetrics.layout-spacing;
                     VerticalLayout {
-                        width: 600px;
                         alignment: start;
+
                         Image {
                             source: root.selected_cover_image;
                             horizontal-alignment: center;
                             image-fit: contain;
+
+                            Rectangle {
+                                width: root.width;
+                                height: root.height;
+                                border-radius: StyleMetrics.layout-padding;
+                                border-width: StyleMetrics.layout-spacing;
+                                border-color: Palette.accent-foreground;
+                            }
                         }
                     }
 
                     VerticalLayout {
+                        alignment: center;
+                        spacing: StyleMetrics.layout-spacing;
                         Text {
                             text: root.selected_title;
-                            horizontal-alignment: center;
-                            font-size: 75px;
+                            font-size: 72px;
                             color: Palette.selection-background;
                         }
 
                         Text {
                             text: root.selected_year;
-                            horizontal-alignment: center;
                         }
 
                         Text {
                             text: "Profile path: " + root.selected_path_to_profile;
-                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: "Temp path: " + root.selected_temp_path;
                         }
                     }
                 }

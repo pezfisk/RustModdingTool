@@ -24,7 +24,7 @@ pub fn save_data(
         .set("temp_path", temp_path)
         .set("year", "")
         .set("path_profile", path_profile)
-        .set("cover_image", cover_image);
+        .set("cover_image", "");
 
     if !profile.exists() {
         fs::create_dir(PathBuf::from("profiles"))?;

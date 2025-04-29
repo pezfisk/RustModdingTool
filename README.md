@@ -62,6 +62,7 @@ You can configure the [Slint backend](https://docs.slint.dev/latest/docs/slint/r
       [env]
       SLINT_BACKEND = "winit"
       ```
+      ```
     Then run `cargo clean && cargo build --release`.
 #### **Style**:
   1. Modify the `style` in `build.rs` for your platform:
@@ -69,7 +70,6 @@ You can configure the [Slint backend](https://docs.slint.dev/latest/docs/slint/r
         "linux" => {
             config = config.with_style("cosmic".into());
         }
-        ```
         ```
   2. Then run `cargo clean && cargo build --release`.
 

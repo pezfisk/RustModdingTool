@@ -6,13 +6,14 @@ export struct ProfileData {
   title: string,
   year: string,
   path_to_profile: string,
-}
+  temp_path: string,}
 
 export component ProfileTile {
     in property <image> cover-image;
     in property <string> title;
     in property <string> year;
     in property <string> path_to_profile;
+    in property <string> temp_path;
 
     callback open_game();
 
