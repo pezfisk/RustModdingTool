@@ -22,9 +22,9 @@ pub fn save_data(
     data.with_section(Some("profile"))
         .set("title", title)
         .set("temp_path", temp_path)
-        .set("year", "")
         .set("path_profile", path_profile)
-        .set("cover_image", "");
+        .set("cover_image", "")
+        .set("year", "");
 
     if !profile.exists() {
         fs::create_dir(PathBuf::from("profiles"))?;

@@ -56,14 +56,12 @@ You can configure the [Slint backend](https://docs.slint.dev/latest/docs/slint/r
       cargo build --release
 
       ```
-  2.  **Cargo Configuration (Persistent):** Create/edit `.cargo/config.toml` in the project root:
+  2.  **Cargo Configuration (Persistent):** Edit `.cargo/config.toml` in the project root:
       ```toml
       # .cargo/config.toml
       [env]
       SLINT_BACKEND = "winit"
       ```
-      ```
-    Then run `cargo clean && cargo build --release`.
 #### **Style**:
   1. Modify the `style` in `build.rs` for your platform:
         ```rust

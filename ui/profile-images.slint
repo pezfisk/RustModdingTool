@@ -6,7 +6,8 @@ export struct ProfileData {
   title: string,
   year: string,
   path_to_profile: string,
-  temp_path: string,}
+  temp_path: string,
+}
 
 export component ProfileTile {
     in property <image> cover-image;
@@ -15,11 +16,20 @@ export component ProfileTile {
     in property <string> path_to_profile;
     in property <string> temp_path;
 
+    private property <bool> hovered: mouse_area.has-hover;
+
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+
     callback open_game();
 
-    Rectangle {
-        width: 200px;
-        height: 300px;
+    origin := Rectangle {
+        width: hovered? 220px : 200px;
+        height: hovered? 320px : 300px;
+        animate width { duration: 200ms; easing: ease-in-out; }
+        animate height { duration: 200ms; easing: ease-in-out; }
+        max-height: self.width * 1.5;
+        max-width: self.height * 1.5;
         background: Palette.background;
         border-radius: StyleMetrics.layout-padding;
         border-width: StyleMetrics.layout-spacing;
@@ -29,33 +39,40 @@ export component ProfileTile {
         drop-shadow-offset-y: 2px;
         drop-shadow-blur: 5px;
 
+
         VerticalLayout {
             padding: 0px;
             spacing: 0px;
 
             Rectangle {
-                height: 240px;
+                height: origin.height / 1.25;
                 Image {
                     source: cover-image;
                     height: parent.height;
                     width: parent.width;
                     image-fit: cover;
+                    Rectangle {
+                        height: parent.height;
+                        width: parent.width;
+                        background: hovered? #FFFFFF20 : #00000000;
+                        animate background { duration: 200ms; easing: ease-in-out; }
+                    }
                 }
             }
 
             Rectangle {
-                height: 60px;
+                height: origin.height / 5;
                 background: #0f0f0f;
 
                 VerticalLayout {
                     padding: 8px;
                     spacing: 2px;
-
                     Text {
                         text: root.title;
                         color: Palette.selection-background;
-                        font-size: 14px;
+                        font-size: hovered? 16px : 14px;
                         font-weight: 600;
+                        animate font-size { duration: 200ms; easing: ease-in-out; }
                     }
 
                     Text {
@@ -67,23 +84,10 @@ export component ProfileTile {
             }
         }
 
-        // Hover effect
-//        states [
-//            hover when root.has-hover: {
-//                border-color: #666666;
-//                scale: 1.02;
-//                animate
-//                scale {
-//                    duration: 200ms;
-//                    easing: ease-in-out;
-//                }
-//            }
-//        ]
-
         // Mouse area for hover detection
-        TouchArea {
+        mouse_area := TouchArea {
+
             clicked => {
-                // Handle click event
                 ProfileState.title = root.title;
                 ProfileState.year = root.year;
                 ProfileState.path_to_profile = root.path_to_profile;
@@ -91,5 +95,6 @@ export component ProfileTile {
                 root.open_game()
             }
         }
+
     }
 }

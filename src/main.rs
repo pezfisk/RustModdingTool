@@ -21,7 +21,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let ui = Rc::new(window);
 
     let ui_handle = ui.as_weak();
-    let overextract = true;
 
     println!("Hello, world!");
 
@@ -91,15 +90,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     if let Some(extension) = path.extension() {
                         if exts.contains(&extension.to_str().unwrap()) {
-                            let _result = match extract::extract_file(
-                                &path.to_str().unwrap().to_string(),
+                            match extract::extract_file(
+                                path.to_str().unwrap(),
                                 &extract_to,
                             ) {
                                 Ok(_) => {
                                     if let Some(ui) = ui_handle.upgrade() {
                                         println!("Extracted files correctly");
                                         ui.set_footer(SharedString::from(
-                                            "Succesfully extracted files",
+                                            "Successfully extracted files",
                                         ));
                                         ui.set_progress(0.5);
                                     }
@@ -155,7 +154,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                                             if let Some(ui) = ui_handle.upgrade() {
                                                 println!("Copied files correctly");
                                                 ui.set_footer(SharedString::from(
-                                                    "Succesfully copied files",
+                                                    "Successfully copied files",
                                                 ));
                                                 ui.set_progress(1.0);
 
@@ -189,7 +188,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                                                 )
                                                 .unwrap();
 
-                                                reload_profiles(&ui_copy);
+                                                reload_profiles(&ui_copy).unwrap();
                                             }
                                         }
                                         Err(e) => {
@@ -212,10 +211,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }
                     }
                 }
-            } else {
-                if let Some(ui) = ui_handle.upgrade() {
-                    ui.set_footer(SharedString::from("No archive selected"));
-                }
+            } else if let Some(ui) = ui_handle.upgrade() {
+                ui.set_footer(SharedString::from("No archive selected"));
             }
         });
     }
@@ -223,9 +220,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         let ui_copy = Rc::clone(&ui);
 
-        ui.on_restore(move |path_to_profile| {
+        ui.on_restore(move |title| {
+            let ini = Ini::load_from_file(PathBuf::from(format!("profiles/{}.ini", title))).unwrap();
+            let path_to_profile = if let Some(section) = ini.section(Some("profile")) {
+                section.get("temp_path").unwrap_or("").to_string()
+            } else {
+                String::from("")
+            };
+            
             let profile = PathBuf::from(path_to_profile.to_string());
-            file_manager::restore(&profile);
+            file_manager::restore(&profile).expect("TODO: panic message");
         });
     }
 
@@ -246,7 +250,7 @@ fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
     let mut profiles = Vec::new();
     let profile_path = PathBuf::from("profiles");
     if !profile_path.exists() {
-        fs::create_dir_all(&profile_path);
+        let _ = fs::create_dir_all(&profile_path);
     }
 
     for entry in std::fs::read_dir(PathBuf::from("profiles"))? {
@@ -265,29 +269,38 @@ fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
                     match slint::Image::load_from_path(&PathBuf::from(try_image.unwrap())) {
                         Ok(image) => image,
                         Err(_) => {
-                            match slint::Image::load_from_path(&PathBuf::from(&format!(
+                            slint::Image::load_from_path(&PathBuf::from(&format!(
                                 "profiles/{}.png",
                                 title
-                            ))) {
-                                Ok(image) => image,
-                                Err(_) => slint::Image::load_from_path(Path::new("notfound.png"))
-                                    .unwrap_or_default(),
-                            }
+                            ))).unwrap_or_else(|_| slint::Image::load_from_path(Path::new("notfound.png"))
+                                .unwrap_or_default())
                         }
                     };
 
                 let profile_data = ProfileData {
-                    cover_image: cover_image,
+                    cover_image,
                     title: title.into(),
                     year: section.get("year").unwrap_or("Unknown").to_string().into(),
-                    path_to_profile: section.get("temp_path").unwrap_or("").to_string().into(),
-                    temp_path: section.get("profile_path").unwrap_or("").to_string().into(),
+                    path_to_profile: section
+                        .get("path_profile")
+                        .unwrap_or("Not found?")
+                        .to_string()
+                        .into(),
+                    temp_path: section
+                        .get("temp_path")
+                        .unwrap_or("Not found?")
+                        .to_string()
+                        .into(),
                 };
+
+                println!("Profile {:?}", profile_data.temp_path);
 
                 profiles.push(profile_data);
             }
         }
     }
+
+    println!("Profiles: {}", profiles.len());
 
     let profiles_model = Rc::new(VecModel::from(profiles));
     let profiles_model_rc = ModelRc::from(profiles_model);
