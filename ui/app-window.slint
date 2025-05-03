@@ -4,7 +4,7 @@ import { ProfileState } from "profile-state.slint";
 import { GridView } from "grid_view.slint";
 
 export component AppWindow inherits Window {
-    in-out property <float> progress: 0.0;
+    in-out property <float> progress: 0.5;
     in-out property <string> footer: "";
     in-out property <string> archive_path: "";
     in-out property <string> game_path: "";
@@ -211,12 +211,13 @@ export component AppWindow inherits Window {
                 visible: false;
                 height: 10px;
                 progress: root.progress;
+                animate progress { duration: 100ms; easing: ease-in-out; }
             }
         }
         // END OF FIRST TAB -------------------------------------------------
         if(tab_index == 1): view := GridView {
             // SECOND TAB -------------------------------------------------------------------
-            viewport-height: Math.round(profiles.length / self.columns) * view.preferredCellHeight * 1px;
+            viewport-height: Math.round(profiles.length / self.columns) * view.preferredCellHeight * 1.25px;
             viewport-width: self.width;
 
             for profile[index] in root.profiles: ProfileTile {
@@ -250,6 +251,8 @@ export component AppWindow inherits Window {
                     spacing: StyleMetrics.layout-spacing;
                     VerticalLayout {
                         alignment: start;
+                        spacing: StyleMetrics.layout-spacing;
+                        width: 30%;
 
                         Image {
                             source: root.selected_cover_image;
@@ -318,7 +321,7 @@ export component AppWindow inherits Window {
                     }
 
                     Text {
-                        text: "Version 0.3.1";
+                        text: "Version 0.3.2";
                     }
 
                     Text {

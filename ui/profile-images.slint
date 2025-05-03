@@ -24,8 +24,8 @@ export component ProfileTile {
     callback open_game();
 
     origin := Rectangle {
-        width: hovered? 220px : 200px;
-        height: hovered? 320px : 300px;
+        width: hovered? 210px : 200px;
+        height: hovered? 310px : 300px;
         animate width { duration: 200ms; easing: ease-in-out; }
         animate height { duration: 200ms; easing: ease-in-out; }
         max-height: self.width * 1.5;
@@ -54,7 +54,7 @@ export component ProfileTile {
                     Rectangle {
                         height: parent.height;
                         width: parent.width;
-                        background: hovered? #FFFFFF20 : #00000000;
+                        background: hovered? #FFFFFF10 : #00000000;
                         animate background { duration: 200ms; easing: ease-in-out; }
                     }
                 }
@@ -70,7 +70,7 @@ export component ProfileTile {
                     Text {
                         text: root.title;
                         color: Palette.selection-background;
-                        font-size: hovered? 16px : 14px;
+                        font-size: hovered? 15px : 14px;
                         font-weight: 600;
                         animate font-size { duration: 200ms; easing: ease-in-out; }
                     }
