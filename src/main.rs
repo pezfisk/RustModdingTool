@@ -2,11 +2,11 @@
 slint::include_modules!();
 use ini::Ini;
 use rfd::FileDialog;
-use slint::{ComponentHandle, Image, ModelRc, SharedString, VecModel, Weak};
+use slint::{ComponentHandle, SharedString};
 use std::{
     env,
     error::Error,
-    fs::{self, OpenOptions},
+    fs::{self},
     io::Write,
     path::{Path, PathBuf},
     rc::Rc,
@@ -90,10 +90,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     if let Some(extension) = path.extension() {
                         if exts.contains(&extension.to_str().unwrap()) {
-                            match extract::extract_file(
-                                path.to_str().unwrap(),
-                                &extract_to,
-                            ) {
+                            match extract::extract_file(path.to_str().unwrap(), &extract_to) {
                                 Ok(_) => {
                                     if let Some(ui) = ui_handle.upgrade() {
                                         println!("Extracted files correctly");
@@ -182,13 +179,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                                                 let path_profile = &game_path.to_string_lossy();
 
                                                 profile_manager::save_data(
+                                                    "",
                                                     title,
                                                     &temp_path,
                                                     path_profile,
                                                 )
                                                 .unwrap();
 
-                                                reload_profiles(&ui_copy).unwrap();
+                                                profile_manager::reload_profiles(&ui_copy).unwrap();
                                             }
                                         }
                                         Err(e) => {
@@ -221,13 +219,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         let ui_copy = Rc::clone(&ui);
 
         ui.on_restore(move |title| {
-            let ini = Ini::load_from_file(PathBuf::from(format!("profiles/{}.ini", title))).unwrap();
+            let ini =
+                Ini::load_from_file(PathBuf::from(format!("profiles/{}.ini", title))).unwrap();
             let path_to_profile = if let Some(section) = ini.section(Some("profile")) {
                 section.get("temp_path").unwrap_or("").to_string()
             } else {
                 String::from("")
             };
-            
+
             let profile = PathBuf::from(path_to_profile.to_string());
             file_manager::restore(&profile).expect("TODO: panic message");
         });
@@ -237,74 +236,20 @@ fn main() -> Result<(), Box<dyn Error>> {
         let ui_copy = Rc::clone(&ui);
 
         ui.on_reload_profiles(move || {
-            reload_profiles(&ui_copy).unwrap();
+            profile_manager::reload_profiles(&ui_copy).unwrap();
+        });
+    }
+
+    {
+        let ui_copy = Rc::clone(&ui);
+
+        ui.on_update_profile(move |name, title, temp_path, profile_path| {
+            println!("Data: {}, {}, {}", title, temp_path, profile_path);
+            profile_manager::save_data(&name, &title, &temp_path, &profile_path).unwrap();
         });
     }
 
     ui.run()?;
-
-    Ok(())
-}
-
-fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
-    let mut profiles = Vec::new();
-    let profile_path = PathBuf::from("profiles");
-    if !profile_path.exists() {
-        let _ = fs::create_dir_all(&profile_path);
-    }
-
-    for entry in std::fs::read_dir(PathBuf::from("profiles"))? {
-        let entry = entry?;
-        let path = entry.path();
-
-        if !path.is_file() {
-            continue;
-        }
-
-        if let Ok(conf) = Ini::load_from_file(&path) {
-            if let Some(section) = conf.section(Some("profile")) {
-                let title = section.get("title").unwrap_or("Unknown").to_string();
-                let try_image = section.get("cover_image");
-                let cover_image =
-                    match slint::Image::load_from_path(&PathBuf::from(try_image.unwrap())) {
-                        Ok(image) => image,
-                        Err(_) => {
-                            slint::Image::load_from_path(&PathBuf::from(&format!(
-                                "profiles/{}.png",
-                                title
-                            ))).unwrap_or_else(|_| slint::Image::load_from_path(Path::new("notfound.png"))
-                                .unwrap_or_default())
-                        }
-                    };
-
-                let profile_data = ProfileData {
-                    cover_image,
-                    title: title.into(),
-                    year: section.get("year").unwrap_or("Unknown").to_string().into(),
-                    path_to_profile: section
-                        .get("path_profile")
-                        .unwrap_or("Not found?")
-                        .to_string()
-                        .into(),
-                    temp_path: section
-                        .get("temp_path")
-                        .unwrap_or("Not found?")
-                        .to_string()
-                        .into(),
-                };
-
-                println!("Profile {:?}", profile_data.temp_path);
-
-                profiles.push(profile_data);
-            }
-        }
-    }
-
-    println!("Profiles: {}", profiles.len());
-
-    let profiles_model = Rc::new(VecModel::from(profiles));
-    let profiles_model_rc = ModelRc::from(profiles_model);
-    ui.set_profiles(profiles_model_rc);
 
     Ok(())
 }

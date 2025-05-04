@@ -2,6 +2,7 @@ import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox, Progre
 import { ProfileTile, ProfileData } from "profile-images.slint";
 import { ProfileState } from "profile-state.slint";
 import { GridView } from "grid_view.slint";
+import { EditWindow } from "profile-edit.slint";
 
 export component AppWindow inherits Window {
     in-out property <float> progress: 0.5;
@@ -23,6 +24,7 @@ export component AppWindow inherits Window {
     private property <string> selected_year;
     private property <string> selected_path_to_profile;
     private property <string> selected_temp_path;
+    private property <string> selected_name;
 
     private property <length> dynamic_font_size: min(self.width / 25, self.height / 25);
 
@@ -31,6 +33,7 @@ export component AppWindow inherits Window {
     callback mod();
     callback restore(string);
     callback reload_profiles();
+    callback update_profile(string, string, string, string);
 
     title: "Oxide Manager";
     min-height: 750px;
@@ -211,13 +214,16 @@ export component AppWindow inherits Window {
                 visible: false;
                 height: 10px;
                 progress: root.progress;
-                animate progress { duration: 100ms; easing: ease-in-out; }
+                animate progress {
+                    duration: 100ms;
+                    easing: ease-in-out;
+                }
             }
         }
         // END OF FIRST TAB -------------------------------------------------
         if(tab_index == 1): view := GridView {
             // SECOND TAB -------------------------------------------------------------------
-            viewport-height: Math.round(profiles.length / self.columns) * view.preferredCellHeight * 1.25px;
+            viewport-height: Math.round(profiles.length / self.columns) * view.preferredCellHeight * 1.5px;
             viewport-width: self.width;
 
             for profile[index] in root.profiles: ProfileTile {
@@ -236,6 +242,7 @@ export component AppWindow inherits Window {
                     root.selected_year = ProfileState.year;
                     root.selected_path_to_profile = ProfileState.path_to_profile;
                     root.selected_temp_path = ProfileState.temp_path;
+                    root.selected_name = ProfileState.name;
                     root.tab_index = 2;
                 }
             }
@@ -252,7 +259,7 @@ export component AppWindow inherits Window {
                     VerticalLayout {
                         alignment: start;
                         spacing: StyleMetrics.layout-spacing;
-                        width: 30%;
+                        width: 35%;
 
                         Image {
                             source: root.selected_cover_image;
@@ -294,6 +301,13 @@ export component AppWindow inherits Window {
                     }
 
                     Button {
+                        text: "Delete profile";
+                        clicked => {
+                            edit_popup.visible = true;
+                        }
+                    }
+
+                    Button {
                         text: "Back";
                         clicked => {
                             root.tab_index = 1;
@@ -301,6 +315,18 @@ export component AppWindow inherits Window {
                     }
                 }
             }
+        }
+    }
+
+    edit_popup := EditWindow {
+        visible: false;
+        width: root.width;
+        height: root.height;
+        background: #00000090;
+        border-color: lightgray;
+
+        update(title, temp_path, path_profile) => {
+            update_profile(root.selected_name, title, temp_path, path_profile);
         }
     }
 

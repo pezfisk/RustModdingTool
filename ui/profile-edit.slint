@@ -1,0 +1,75 @@
+import { Palette, StyleMetrics, LineEdit, Button } from "std-widgets.slint";
+import { ProfileState } from "profile-state.slint";
+
+export component EditWindow inherits Rectangle {
+    private property <string> title;
+    private property <string> temp_path;
+    private property <string> path_profile;
+
+    callback update(string, string, string);
+
+    TouchArea {
+        clicked => {
+            root.visible = false;
+        }
+    }
+
+    child := Rectangle {
+        width: root.width / 3;
+        height: root.height / 3;
+        x: (root.width / 2) - (root.width / 6);
+        y: (root.height / 2) - (root.height / 6);
+        background: Palette.background;
+        border-color: Palette.border;
+        border-width: StyleMetrics.layout-padding;
+        border-radius: StyleMetrics.layout-padding;
+
+        TouchArea { }
+
+        VerticalLayout {
+            spacing: StyleMetrics.layout-spacing;
+
+            LineEdit {
+                text: "Title";
+                edited(text) => {
+                    self.text = text;
+                    root.title = text;
+                }
+            }
+
+            LineEdit {
+                text: "Temp path";
+                edited(text) => {
+                    self.text = text;
+                    root.temp_path = text;
+                }
+            }
+
+            LineEdit {
+                text: "Path to profile";
+                edited(text) => {
+                    self.text = text;
+                    root.path_profile = text;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: StyleMetrics.layout-spacing;
+                Button {
+                    text: "Save";
+                    clicked => {
+                        root.update(root.title, root.temp_path, root.path_profile);
+                        root.visible = false;
+                    }
+                }
+
+                Button {
+                    text: "Cancel";
+                    clicked => {
+                        root.visible = false;
+                    }
+                }
+            }
+        }
+    }
+}
