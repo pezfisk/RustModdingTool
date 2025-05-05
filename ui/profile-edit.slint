@@ -2,11 +2,10 @@ import { Palette, StyleMetrics, LineEdit, Button } from "std-widgets.slint";
 import { ProfileState } from "profile-state.slint";
 
 export component EditWindow inherits Rectangle {
-    private property <string> title;
     private property <string> temp_path;
     private property <string> path_profile;
 
-    callback update(string, string, string);
+    callback update(string, string);
 
     TouchArea {
         clicked => {
@@ -15,50 +14,70 @@ export component EditWindow inherits Rectangle {
     }
 
     child := Rectangle {
-        width: root.width / 3;
-        height: root.height / 3;
+        width: root.width / 2.5 + StyleMetrics.layout-spacing;
+        height: root.height / 2.5 + StyleMetrics.layout-spacing;
         x: (root.width / 2) - (root.width / 6);
         y: (root.height / 2) - (root.height / 6);
         background: Palette.background;
         border-color: Palette.border;
-        border-width: StyleMetrics.layout-padding;
+        border-width: 1px;
         border-radius: StyleMetrics.layout-padding;
 
         TouchArea { }
 
         VerticalLayout {
+            padding: StyleMetrics.layout-padding;
             spacing: StyleMetrics.layout-spacing;
 
-            LineEdit {
-                text: "Title";
-                edited(text) => {
-                    self.text = text;
-                    root.title = text;
+            VerticalLayout {
+                Text {
+                    horizontal-alignment: center;
+                    vertical-alignment: bottom;
+                    text: "Change temp path (don't change if you don't know what you are doing)";
+                }
+
+                Rectangle {
+                    height: 10%;
+                    opacity: 0;
+                }
+
+                LineEdit {
+                    placeholder-text: "Temp path";
+                    edited(text) => {
+                        self.text = text;
+                        root.temp_path = text;
+                    }
                 }
             }
 
-            LineEdit {
-                text: "Temp path";
-                edited(text) => {
-                    self.text = text;
-                    root.temp_path = text;
+            VerticalLayout {
+                Text {
+                    horizontal-alignment: center;
+                    vertical-alignment: bottom;
+                    text: "Change profile path (game directory)";
                 }
-            }
 
-            LineEdit {
-                text: "Path to profile";
-                edited(text) => {
-                    self.text = text;
-                    root.path_profile = text;
+                Rectangle {
+                    height: 10%;
+                    opacity: 0;
+                }
+
+                LineEdit {
+                    placeholder-text: "Path to profile";
+                    edited(text) => {
+                        self.text = text;
+                        root.path_profile = text;
+                    }
                 }
             }
 
             HorizontalLayout {
+                height: 10%;
                 spacing: StyleMetrics.layout-spacing;
                 Button {
                     text: "Save";
                     clicked => {
-                        root.update(root.title, root.temp_path, root.path_profile);
+                        root.update(root.temp_path, root.path_profile);
                         root.visible = false;
                     }
                 }
@@ -66,6 +85,7 @@ export component EditWindow inherits Rectangle {
                 Button {
                     text: "Cancel";
                     clicked => {
+                        root.opacity = 0;
                         root.visible = false;
                     }
                 }

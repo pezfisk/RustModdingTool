@@ -12,7 +12,6 @@ use std::{
 //use steamgriddb_api::query_parameters::QueryType::Grid;
 
 pub fn save_data<'a>(
-    mut file_name: &'a str,
     title: &'a str,
     temp_path: &str,
     path_profile: &str,
@@ -34,16 +33,7 @@ pub fn save_data<'a>(
         fs::create_dir(PathBuf::from("profiles"))?;
     }
 
-    if file_name == "" {
-        file_name = &title;
-    }
-
-    println!(
-        "Data: {}, {}, {}, {}",
-        file_name, title, temp_path, path_profile
-    );
-
-    data.write_to_file(PathBuf::from(format!("profiles/{}.ini", file_name)))?;
+    data.write_to_file(PathBuf::from(format!("profiles/{}.ini", title)))?;
 
     println!("Saving data");
     Ok(())

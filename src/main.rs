@@ -179,7 +179,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                                                 let path_profile = &game_path.to_string_lossy();
 
                                                 profile_manager::save_data(
-                                                    "",
                                                     title,
                                                     &temp_path,
                                                     path_profile,
@@ -218,9 +217,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         let ui_copy = Rc::clone(&ui);
 
-        ui.on_restore(move |title| {
-            let ini =
-                Ini::load_from_file(PathBuf::from(format!("profiles/{}.ini", title))).unwrap();
+        ui.on_restore(move |name| {
+            let ini = match Ini::load_from_file(PathBuf::from(format!("profiles/{}.ini", name))) {
+                Ok(ini) => ini,
+                Err(e) => {
+                    ui_copy.set_footer(SharedString::from(format!("Error: {}", e)));
+                    return;
+                }
+            };
             let path_to_profile = if let Some(section) = ini.section(Some("profile")) {
                 section.get("temp_path").unwrap_or("").to_string()
             } else {
@@ -228,7 +232,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
 
             let profile = PathBuf::from(path_to_profile.to_string());
-            file_manager::restore(&profile).expect("TODO: panic message");
+            println!("Restoring profile: {}", profile.display());
+            match file_manager::restore(&profile) {
+                Ok(_) => {
+                    profile_manager::reload_profiles(&ui_copy).unwrap();
+                    println!("Restored profile: {}", profile.display());
+                }
+                Err(e) => {
+                    println!("Failed to restore profile: {}", e);
+                }
+            }
         });
     }
 
@@ -243,9 +256,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         let ui_copy = Rc::clone(&ui);
 
-        ui.on_update_profile(move |name, title, temp_path, profile_path| {
+        ui.on_update_profile(move |title, temp_path, profile_path| {
             println!("Data: {}, {}, {}", title, temp_path, profile_path);
-            profile_manager::save_data(&name, &title, &temp_path, &profile_path).unwrap();
+            profile_manager::save_data(&title, &temp_path, &profile_path).unwrap();
         });
     }
 

@@ -33,7 +33,7 @@ export component AppWindow inherits Window {
     callback mod();
     callback restore(string);
     callback reload_profiles();
-    callback update_profile(string, string, string, string);
+    callback update_profile(string, string, string);
 
     title: "Oxide Manager";
     min-height: 750px;
@@ -235,6 +235,7 @@ export component AppWindow inherits Window {
                 title: profile.title;
                 year: profile.year;
                 path_to_profile: profile.path_to_profile;
+                temp_path: profile.temp_path;
 
                 open_game() => {
                     root.selected_cover_image = ProfileState.cover_image;
@@ -242,7 +243,6 @@ export component AppWindow inherits Window {
                     root.selected_year = ProfileState.year;
                     root.selected_path_to_profile = ProfileState.path_to_profile;
                     root.selected_temp_path = ProfileState.temp_path;
-                    root.selected_name = ProfileState.name;
                     root.tab_index = 2;
                 }
             }
@@ -301,9 +301,10 @@ export component AppWindow inherits Window {
                     }
 
                     Button {
-                        text: "Delete profile";
+                        text: "Edit profile";
                         clicked => {
                             edit_popup.visible = true;
+                            edit_popup.opacity = 1;
                         }
                     }
 
@@ -320,13 +321,18 @@ export component AppWindow inherits Window {
 
     edit_popup := EditWindow {
         visible: false;
+        opacity: 0;
         width: root.width;
         height: root.height;
         background: #00000090;
         border-color: lightgray;
+        animate opacity {
+            duration: 100ms;
+            easing: ease-in;
+        }
 
-        update(title, temp_path, path_profile) => {
-            update_profile(root.selected_name, title, temp_path, path_profile);
+        update(temp_path, path_profile) => {
+            update_profile(root.selected_title, temp_path, path_profile);
         }
     }
 
