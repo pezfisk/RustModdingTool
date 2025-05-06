@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 slint::include_modules!();
+use dirs::data_dir;
 use ini::Ini;
 use rfd::FileDialog;
 use slint::{ComponentHandle, SharedString};
@@ -59,23 +60,35 @@ fn main() -> Result<(), Box<dyn Error>> {
             let path = PathBuf::from(ui_copy.get_archive_path().to_string());
             let game_path = PathBuf::from(ui_copy.get_game_path().to_string());
             let extract_to = match &game_path.file_name() {
-                Some(name) => format!(".temp/{}/", name.to_string_lossy()),
-                None => String::from(".temp/Unknown/"),
+                Some(name) => format!("oxide/.temp/{}/", name.to_string_lossy()),
+                None => String::from("oxide/.temp/Unknown/"),
             };
+
+            let extract_to_data_dir = match data_dir() {
+                Some(mut data_path) => {
+                    data_path.push(extract_to);
+                    data_path
+                }
+                None => {
+                    eprintln!("Error getting data directory");
+                    PathBuf::new()
+                }
+            };
+
             let overwrite = ui_copy.get_overwrite();
             let symlink = ui_copy.get_symlink();
             let exts = ["zip", "rar", "7z"];
 
-            let _ = fs::remove_dir_all(match env::current_dir() {
-                Ok(path) => {
-                    if !path.join(&extract_to).exists() {
-                        path.join(&extract_to)
+            let _ = fs::remove_dir_all(match data_dir() {
+                Some(path) => {
+                    if !path.join(&extract_to_data_dir).exists() {
+                        path.join(&extract_to_data_dir)
                     } else {
                         PathBuf::new()
                     }
                 }
-                Err(e) => {
-                    println!("Failed to get current directory: {}", e);
+                None => {
+                    println!("Failed to get data directory");
                     PathBuf::new()
                 }
             });
@@ -90,7 +103,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     if let Some(extension) = path.extension() {
                         if exts.contains(&extension.to_str().unwrap()) {
-                            match extract::extract_file(path.to_str().unwrap(), &extract_to) {
+                            match extract::extract_file(
+                                path.to_str().unwrap(),
+                                &extract_to_data_dir,
+                            ) {
                                 Ok(_) => {
                                     if let Some(ui) = ui_handle.upgrade() {
                                         println!("Extracted files correctly");
@@ -102,7 +118,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                                     println!("Now copying over to target directory");
 
-                                    let log_path = PathBuf::from(&extract_to).join("existing.txt");
+                                    let log_path =
+                                        PathBuf::from(&extract_to_data_dir).join("existing.txt");
                                     println!("Path: {}", game_path.display());
 
                                     {
@@ -141,7 +158,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                                     match file_manager::copy_to_dir(
                                         &game_path,
-                                        &PathBuf::from(&extract_to),
+                                        &extract_to_data_dir,
                                         Path::new(""),
                                         overwrite,
                                         &log_path,
@@ -160,30 +177,34 @@ fn main() -> Result<(), Box<dyn Error>> {
                                                     .unwrap()
                                                     .to_string_lossy();
 
-                                                let temp_path = match env::current_dir() {
-                                                    Ok(path) => {
+                                                let temp_path = match data_dir() {
+                                                    Some(path) => {
                                                         format!(
                                                             "{}/{}",
                                                             path.display(),
-                                                            &extract_to
+                                                            &extract_to_data_dir.display()
                                                         )
                                                     }
-                                                    Err(e) => {
-                                                        println!(
-                                                            "Failed to get current directory: {}",
-                                                            e
-                                                        );
+                                                    None => {
+                                                        println!("Failed to get data directory",);
                                                         String::from("")
                                                     }
                                                 };
                                                 let path_profile = &game_path.to_string_lossy();
 
-                                                profile_manager::save_data(
+                                                match profile_manager::save_data(
                                                     title,
                                                     &temp_path,
                                                     path_profile,
-                                                )
-                                                .unwrap();
+                                                ) {
+                                                    Ok(_) => {}
+                                                    Err(e) => {
+                                                        if let Some(ui) = ui_handle.upgrade() {
+                                                            println!("Failed to save data: {}", e);
+                                                            let error = format!("Error: {}", e);
+                                                        }
+                                                    }
+                                                }
 
                                                 profile_manager::reload_profiles(&ui_copy).unwrap();
                                             }

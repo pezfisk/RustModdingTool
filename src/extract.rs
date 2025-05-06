@@ -1,8 +1,17 @@
-use std::{error::Error, fs, io, path::Path};
+use dirs::data_dir;
+use std::{
+    error::Error,
+    fs, io,
+    path::{Path, PathBuf},
+};
 
-pub fn extract_file(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error>> {
+pub fn extract_file(archive_path: &str, extract_to: &PathBuf) -> Result<(), Box<dyn Error>> {
     if let Some(extension) = Path::new(&archive_path).extension() {
-        let extract_to = format!("{}/extracted", extract_to);
+        let data_dir = data_dir().unwrap_or_else(|| {
+            println!("Failed to get data directory");
+            PathBuf::new()
+        });
+        let extract_to = format!("{}/{}extracted", data_dir.display(), extract_to.display());
         let _result = match extension.to_str().unwrap() {
             "zip" => extract_zip(&archive_path, &extract_to),
             "rar" => extract_rar(&archive_path, &extract_to),

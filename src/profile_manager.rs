@@ -1,12 +1,12 @@
 use crate::{AppWindow, ProfileData};
+use dirs::data_dir;
 use ini::Ini;
 use slint::{ModelRc, VecModel};
-use std::path::Path;
-use std::rc::Rc;
 use std::{
     error::Error,
     fs::{self},
-    path::PathBuf,
+    path::{Path, PathBuf},
+    rc::Rc,
 };
 //use steamgriddb_api::Client;
 //use steamgriddb_api::query_parameters::QueryType::Grid;
@@ -18,10 +18,20 @@ pub fn save_data<'a>(
     //cover_image: &str,
     //year: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let profile = PathBuf::from("profiles");
+    let data_dir = data_dir().unwrap_or_else(|| {
+        println!("Failed to get data directory");
+        PathBuf::new()
+    });
+
+    let mut profile = {
+        let mut path = data_dir;
+        path.push("oxide/profiles");
+        path
+    };
+
     let mut data = Ini::new();
 
-    let cover_image = get_cover_image(title).unwrap();
+    let cover_image = get_cover_image(title)?;
     data.with_section(Some("profile"))
         .set("title", title)
         .set("temp_path", temp_path)
@@ -30,10 +40,12 @@ pub fn save_data<'a>(
         .set("year", "");
 
     if !profile.exists() {
-        fs::create_dir(PathBuf::from("profiles"))?;
+        fs::create_dir(&profile)?;
     }
 
-    data.write_to_file(PathBuf::from(format!("profiles/{}.ini", title)))?;
+    profile.push(PathBuf::from(format!("{}.ini", title)));
+
+    data.write_to_file(&profile)?;
 
     println!("Saving data");
     Ok(())
@@ -46,12 +58,25 @@ fn get_cover_image(title: &str) -> Result<String, Box<dyn Error>> {
 
 pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
     let mut profiles = Vec::new();
-    let profile_path = PathBuf::from("profiles");
+
+    let data_dir = data_dir().unwrap_or_else(|| {
+        println!("Failed to get data directory");
+        PathBuf::new()
+    });
+
+    let profile_path = {
+        let mut path = data_dir;
+        path.push("oxide/profiles");
+        path
+    };
+
+    println!("profile_path: {}", profile_path.display());
+
     if !profile_path.exists() {
         let _ = fs::create_dir_all(&profile_path);
     }
 
-    for entry in std::fs::read_dir(PathBuf::from("profiles"))? {
+    for entry in std::fs::read_dir(profile_path)? {
         let entry = entry?;
         let path = entry.path();
 

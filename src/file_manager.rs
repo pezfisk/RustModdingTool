@@ -1,7 +1,7 @@
+use dirs::data_dir;
 use std::{
-    env,
     error::Error,
-    fs::{self, OpenOptions, read_to_string},
+    fs::{self, OpenOptions},
     io::prelude::*,
     path::{Path, PathBuf},
 };
@@ -15,16 +15,17 @@ pub fn copy_to_dir(
     symlink: bool,
 ) -> Result<(), Box<dyn Error>> {
     let mut walk_dir = PathBuf::new();
-    match env::current_dir() {
-        Ok(path) => {
-            walk_dir = path.join(&profile).join("extracted").join(start_point);
+    match data_dir() {
+        Some(mut path) => {
+            let profile_slash = PathBuf::from(format!("{}/", profile.display()));
+            walk_dir = path.join(profile_slash).join("extracted").join(start_point);
         }
-        Err(e) => {
-            eprintln!("Failed to get current directory: {}", e);
+        None => {
+            eprintln!("Failed to get home directory");
         }
     }
     println!(
-        "Copying files from {:?} to ({:?})",
+        "Copying files from {:?} to {:?}",
         walk_dir.display(),
         copy_to
     );
@@ -191,13 +192,11 @@ fn split_path(path: &PathBuf, profile: &PathBuf) -> Option<PathBuf> {
         None => return None,
     };
 
-    let path_dir = match env::current_dir() {
-        Ok(path) => path,
-        Err(e) => {
-            println!("Failed to get current directory (split_path): {}", e);
-            PathBuf::new()
-        }
-    };
+    let path_dir = data_dir().unwrap_or_else(|| {
+        println!("Failed to get data directory (split_path)");
+        PathBuf::new()
+    });
+
     let complete_path = PathBuf::from(format!(
         "{}/{}bak{}",
         path_dir.display(),
