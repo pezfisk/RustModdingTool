@@ -171,6 +171,8 @@ fn load_cover_image(path: String, title: String) -> Result<Image, Box<dyn Error>
 }
 
 pub async fn get_cover_image(title: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let client_key = Client::new("");
+
     let data_dir = data_dir().unwrap_or_else(|| {
         println!("Failed to get data directory");
         PathBuf::new()
@@ -186,7 +188,7 @@ pub async fn get_cover_image(title: &str) -> Result<(), Box<dyn std::error::Erro
     println!("profile: {}", profile.display());
 
     if !profile.exists() {
-        let client = Client::new("6529f5cd88c2495fe9871ce90aa000b3");
+        let client = client_key;
         let games = client.search(title).await?;
         let first_game = games.iter().next().ok_or("No games found")?;
 
