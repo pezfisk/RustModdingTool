@@ -118,8 +118,6 @@ pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
                     name: section.get("name").unwrap_or("Unknown").to_string().into(),
                 };
 
-                println!("Profile {:?}", profile_data.temp_path);
-
                 profiles.push(profile_data);
             }
         }

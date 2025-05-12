@@ -1,2 +1,2 @@
 [env]
-SLINT_BACKEND = "winit-skia"
+SLINT_BACKEND = "winit"

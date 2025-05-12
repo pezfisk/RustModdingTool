@@ -237,12 +237,12 @@ export component AppWindow inherits Window {
                 path_to_profile: profile.path_to_profile;
                 temp_path: profile.temp_path;
 
-                open_game() => {
+                open_game(temp_path) => {
                     root.selected_cover_image = ProfileState.cover_image;
                     root.selected_title = ProfileState.title;
                     root.selected_year = ProfileState.year;
                     root.selected_path_to_profile = ProfileState.path_to_profile;
-                    root.selected_temp_path = ProfileState.temp_path;
+                    root.selected_temp_path = temp_path;
                     root.tab_index = 2;
                 }
             }
@@ -286,7 +286,7 @@ export component AppWindow inherits Window {
                         }
 
                         Text {
-                            text: "Temp path: " + root.selected_temp_path;
+                            text: root.selected_temp_path + "hasfkasofsa";
                         }
                     }
                 }
@@ -318,6 +318,15 @@ export component AppWindow inherits Window {
             }
         }
     }
+
+    //Rectangle {
+    //    background: black;
+    //    width: root.width / 3;
+    //    height: root.height / 6;
+    //    Text {
+    //        text: "| " + root.selected_temp_path + " |";
+    //    }
+    //}
 
     edit_popup := EditWindow {
         visible: false;

@@ -23,7 +23,7 @@ export component ProfileTile {
     horizontal-stretch: 1;
     vertical-stretch: 1;
 
-    callback open_game();
+    callback open_game(string);
 
     origin := Rectangle {
         width: hovered ? 210px : 200px;
@@ -87,7 +87,7 @@ export component ProfileTile {
                     }
 
                     Text {
-                        text: root.year;
+                        text: root.temp_path;
                         color: Palette.control-foreground;
                         font-size: 12px;
                     }
@@ -103,7 +103,8 @@ export component ProfileTile {
                 ProfileState.path_to_profile = root.path_to_profile;
                 ProfileState.cover_image = root.cover_image;
                 ProfileState.name = root.name;
-                root.open_game()
+                ProfileState.temp_path = root.temp_path;
+                root.open_game(temp_path);
             }
         }
     }
