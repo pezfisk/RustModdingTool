@@ -16,7 +16,7 @@ pub fn copy_to_dir(
 ) -> Result<(), Box<dyn Error>> {
     let mut walk_dir = PathBuf::new();
     match data_dir() {
-        Some(mut path) => {
+        Some(path) => {
             let profile_slash = PathBuf::from(format!("{}/", profile.display()));
             walk_dir = path.join(profile_slash).join("extracted").join(start_point);
         }
@@ -65,10 +65,10 @@ pub fn copy_to_dir(
             }
             copy_to_dir(
                 &dst_path,
-                &profile,
+                profile,
                 &new_walk_dir,
                 overwrite,
-                &log_path,
+                log_path,
                 symlink,
             )?;
         } else if metadata.is_file() {
@@ -88,7 +88,7 @@ pub fn copy_to_dir(
                 let mut file = OpenOptions::new()
                     .append(true)
                     .create(true)
-                    .open(&log_path)?;
+                    .open(log_path)?;
 
                 let path_str = format!("{}\n", &dst_path.to_string_lossy());
 
@@ -140,7 +140,7 @@ fn create_symlink(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn restore(profile: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn restore(profile: &Path) -> Result<(), Box<dyn Error>> {
     println!(
         "Restoring profile ({}) to original state",
         profile.display()
@@ -177,14 +177,14 @@ pub fn restore(profile: &PathBuf) -> Result<(), Box<dyn Error>> {
         }
         Err(e) => {
             println!("Failed to remove symlinks: {}", e);
-            return Err(e.into());
+            return Err(e);
         }
     }
 
     Ok(())
 }
 
-fn split_path(path: &PathBuf, profile: &PathBuf) -> Option<PathBuf> {
+fn split_path(path: &Path, profile: &Path) -> Option<PathBuf> {
     let path_str = path.to_string_lossy();
     let profile_filename = profile.file_name()?;
     let where_to = match path_str.split_once(profile_filename.to_str()?) {
@@ -214,7 +214,7 @@ fn create_bak(src: &PathBuf, dst: &PathBuf) -> Result<(), Box<dyn Error>> {
         }
     }
 
-    fs::rename(&src, &dst)?;
+    fs::rename(src, dst)?;
     println!("src: {}, dst: {}", src.display(), dst.display());
 
     Ok(())
@@ -228,7 +228,7 @@ fn remove_symlinks(path: &Path) -> Result<(), Box<dyn Error>> {
         if metadata.is_dir() {
             remove_symlinks(&entry.path())?;
         } else if metadata.file_type().is_symlink() {
-            fs::remove_file(&entry.path())?;
+            fs::remove_file(entry.path())?;
         }
     }
 

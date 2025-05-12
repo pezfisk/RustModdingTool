@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub fn extract_file(archive_path: &str, extract_to: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn extract_file(archive_path: &str, extract_to: &Path) -> Result<(), Box<dyn Error>> {
     if let Some(extension) = Path::new(&archive_path).extension() {
         let data_dir = data_dir().unwrap_or_else(|| {
             println!("Failed to get data directory");
@@ -13,9 +13,9 @@ pub fn extract_file(archive_path: &str, extract_to: &PathBuf) -> Result<(), Box<
         });
         let extract_to = format!("{}/{}extracted", data_dir.display(), extract_to.display());
         let _result = match extension.to_str().unwrap() {
-            "zip" => extract_zip(&archive_path, &extract_to),
-            "rar" => extract_rar(&archive_path, &extract_to),
-            "7z" => extract_7z(&archive_path, &extract_to),
+            "zip" => extract_zip(archive_path, &extract_to),
+            "rar" => extract_rar(archive_path, &extract_to),
+            "7z" => extract_7z(archive_path, &extract_to),
             _ => {
                 println!("Not supported");
                 Ok(())
@@ -46,12 +46,6 @@ fn extract_zip(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error
         if file.name().ends_with('/') {
             fs::create_dir_all(&outpath)?;
         } else {
-            // if let Some(p) = outpath.parent() {
-            //    if !p.exists() {
-            //        fs::create_dir_all(p).unwrap();
-            //    }
-            //}
-
             println!("Creating file at: {:?}", outpath);
 
             if let Some(parent) = outpath.parent() {

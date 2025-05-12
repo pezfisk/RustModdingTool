@@ -1,17 +1,20 @@
 [package]
 name = "OxideManager"
-version = "0.3.2"
+version = "0.4.0"
 edition = "2024"
 
 [dependencies]
-sevenz-rust2 = "0.13.1"
+sevenz-rust2 = "0.13.2"
 slint = "1.11.0"
 unrar = "0.5.8"
 zip = "2.6.1"
 rfd = "0.15.2"
 rust-ini = "0.21.1"
 dirs = "6.0.0"
-#steamgriddb_api = "0.3.1"
+steamgriddb_api = "0.3.1"
+tokio = { version = "1.32.0", features = ["full"] }
+image = "0.25.6"
+reqwest = { version = "0.12.15", features = ["blocking"] }
 
 [build-dependencies]
 slint-build = "1.11.0"

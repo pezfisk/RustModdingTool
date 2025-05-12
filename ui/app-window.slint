@@ -93,11 +93,13 @@ export component AppWindow inherits Window {
 
         if (tab_index == 0): VerticalLayout {
             // FIST TAB -------------------------------------------------------------------
+            spacing: StyleMetrics.layout-spacing * 2;
             VerticalLayout {
-                spacing: StyleMetrics.layout-spacing;
+                spacing: StyleMetrics.layout-spacing * 2;
                 Text {
                     text: "Path to directory containing compressed files ( RAR - ZIP - 7z )";
                     horizontal-alignment: center;
+                    vertical-alignment: bottom;
                 }
 
                 HorizontalLayout {
@@ -120,11 +122,11 @@ export component AppWindow inherits Window {
             }
 
             VerticalLayout {
-                spacing: 10px;
+                spacing: StyleMetrics.layout-spacing * 2;
                 Text {
                     text: "Path to game directory";
                     horizontal-alignment: center;
-                    vertical-alignment: center;
+                    vertical-alignment: bottom;
                 }
 
                 HorizontalLayout {
@@ -147,7 +149,6 @@ export component AppWindow inherits Window {
             }
 
             VerticalLayout {
-                spacing: 10px;
                 VerticalLayout {
                     HorizontalLayout {
                         alignment: center;
@@ -286,7 +287,7 @@ export component AppWindow inherits Window {
                         }
 
                         Text {
-                            text: root.selected_temp_path + "hasfkasofsa";
+                            text: "Temp path: " + root.selected_temp_path;
                         }
                     }
                 }
@@ -318,15 +319,6 @@ export component AppWindow inherits Window {
             }
         }
     }
-
-    //Rectangle {
-    //    background: black;
-    //    width: root.width / 3;
-    //    height: root.height / 6;
-    //    Text {
-    //        text: "| " + root.selected_temp_path + " |";
-    //    }
-    //}
 
     edit_popup := EditWindow {
         visible: false;
@@ -362,7 +354,7 @@ export component AppWindow inherits Window {
                     }
 
                     Text {
-                        text: "Version 0.3.2";
+                        text: "Version 0.4.0";
                     }
 
                     Text {

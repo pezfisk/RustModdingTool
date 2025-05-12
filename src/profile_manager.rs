@@ -1,15 +1,22 @@
-use crate::{AppWindow, ProfileData};
+use crate::{profile_manager, AppWindow, ProfileData};
 use dirs::data_dir;
 use ini::Ini;
-use slint::{ModelRc, VecModel};
+use slint::{Image, ModelRc, VecModel};
 use std::{
     error::Error,
     fs::{self},
-    path::{Path, PathBuf},
+    io::Cursor,
+    path::PathBuf,
     rc::Rc,
 };
-//use steamgriddb_api::Client;
-//use steamgriddb_api::query_parameters::QueryType::Grid;
+
+use reqwest::get;
+
+use image::io::Reader as ImageReader;
+
+use steamgriddb_api::query_parameters::QueryType::Grid;
+use steamgriddb_api::Client;
+use tokio::runtime::Runtime;
 
 pub fn save_data<'a>(
     title: &'a str,
@@ -31,7 +38,7 @@ pub fn save_data<'a>(
 
     let mut data = Ini::new();
 
-    let cover_image = get_cover_image(title)?;
+    //let cover_image = get_cover_image(title)?;
     data.with_section(Some("profile"))
         .set("title", title)
         .set("temp_path", temp_path)
@@ -49,11 +56,6 @@ pub fn save_data<'a>(
 
     println!("Saving data");
     Ok(())
-}
-
-fn get_cover_image(title: &str) -> Result<String, Box<dyn Error>> {
-    Ok("notfound.png".into())
-    // TODO -> Figure out how to get the cover image from steamgriddb
 }
 
 pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
@@ -76,7 +78,7 @@ pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
         let _ = fs::create_dir_all(&profile_path);
     }
 
-    for entry in std::fs::read_dir(profile_path)? {
+    for entry in fs::read_dir(&profile_path)? {
         let entry = entry?;
         let path = entry.path();
 
@@ -87,19 +89,8 @@ pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
         if let Ok(conf) = Ini::load_from_file(&path) {
             if let Some(section) = conf.section(Some("profile")) {
                 let title = section.get("title").unwrap_or("Unknown").to_string();
-                let try_image = section.get("cover_image");
-                let cover_image =
-                    match slint::Image::load_from_path(&PathBuf::from(try_image.unwrap())) {
-                        Ok(image) => image,
-                        Err(_) => slint::Image::load_from_path(&PathBuf::from(&format!(
-                            "profiles/{}.png",
-                            title
-                        )))
-                        .unwrap_or_else(|_| {
-                            slint::Image::load_from_path(Path::new("notfound.png"))
-                                .unwrap_or_default()
-                        }),
-                    };
+                let try_image = section.get("cover_image").unwrap_or("Unknown").to_string();
+                let cover_image = load_cover_image(try_image, title.clone())?;
 
                 let profile_data = ProfileData {
                     cover_image,
@@ -129,5 +120,110 @@ pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
     let profiles_model_rc = ModelRc::from(profiles_model);
     ui.set_profiles(profiles_model_rc);
 
+    Ok(())
+}
+
+fn load_cover_image(path: String, title: String) -> Result<Image, Box<dyn Error>> {
+    println!("Trying image in ini file: {}", path);
+    if let Ok(image) = slint::Image::load_from_path(&PathBuf::from(&path)) {
+        return Ok(image);
+    }
+
+    println!("Trying image with same name: {}", title);
+
+    let data_dir = data_dir().unwrap_or_else(|| {
+        println!("Failed to get data directory");
+        PathBuf::new()
+    });
+
+    let profile = {
+        let mut path = data_dir;
+        let profile_path = PathBuf::from(format!("oxide/profiles/{}.png", title));
+        path.push(profile_path);
+        path
+    };
+
+    match slint::Image::load_from_path(&PathBuf::from(&profile)) {
+        Ok(image) => {
+            return Ok(image);
+        }
+        Err(..) => {
+            let rt = Runtime::new()?;
+
+            println!("Trying image from steamgriddb: {}", title);
+            match rt.block_on(profile_manager::get_cover_image(&title)) {
+                Ok(..) => {
+                    return Ok(slint::Image::load_from_path(&PathBuf::from(&profile))?);
+                }
+                Err(e) => {
+                    println!("Error: {}", e);
+                }
+            }
+        }
+    }
+
+    println!("Falling back to notfound.png");
+    if let Ok(image) = slint::Image::load_from_path(&PathBuf::from("notfound.png")) {
+        Ok(image)
+    } else {
+        Err("Failed to load image".into())
+    }
+}
+
+pub async fn get_cover_image(title: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let data_dir = data_dir().unwrap_or_else(|| {
+        println!("Failed to get data directory");
+        PathBuf::new()
+    });
+
+    let profile = {
+        let mut path = data_dir;
+        let profile_path = PathBuf::from(format!("oxide/profiles/{}.png", title));
+        path.push(profile_path);
+        path
+    };
+
+    println!("profile: {}", profile.display());
+
+    if !profile.exists() {
+        let client = Client::new("6529f5cd88c2495fe9871ce90aa000b3");
+        let games = client.search(title).await?;
+        let first_game = games.iter().next().ok_or("No games found")?;
+
+        if first_game.name != title {
+            return Err(format!("Game not found: {}", title).into());
+        }
+
+        assert_eq!(title, first_game.name);
+        let images = client.get_images_for_id(first_game.id, &Grid(None)).await?;
+        let first_image = images.iter().next().ok_or("No images found")?;
+
+        println!("Getting image from: {:?}", first_image.url);
+
+        let response = get(&first_image.url).await?;
+
+        if !response.status().is_success() {
+            return Err(format!(
+                "Failed to download image: HTTP status code {}",
+                response.status()
+            )
+            .into());
+        }
+
+        let image_bytes = response.bytes().await?;
+
+        println!("Image data downloaded.");
+
+        let cursor = Cursor::new(image_bytes);
+        let reader = ImageReader::new(cursor).with_guessed_format()?;
+
+        let img = reader.decode()?;
+
+        println!("Image decoded successfully.");
+
+        img.save(profile)?;
+
+        println!("Image saved");
+    }
     Ok(())
 }

@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let _ = fs::remove_dir_all(match data_dir() {
                 Some(path) => {
                     if !path.join(&extract_to_data_dir).exists() {
-                        path.join(&extract_to_data_dir)
+                        extract_to_data_dir.clone()
                     } else {
                         PathBuf::new()
                     }
@@ -177,24 +177,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                                                     .unwrap()
                                                     .to_string_lossy();
 
-                                                let temp_path = match data_dir() {
-                                                    Some(path) => {
-                                                        format!(
-                                                            "{}/{}",
-                                                            path.display(),
-                                                            &extract_to_data_dir.display()
-                                                        )
-                                                    }
-                                                    None => {
-                                                        println!("Failed to get data directory",);
-                                                        String::from("")
-                                                    }
-                                                };
+                                                let temp_path =
+                                                    &extract_to_data_dir.to_str().unwrap();
+
                                                 let path_profile = &game_path.to_string_lossy();
 
                                                 match profile_manager::save_data(
                                                     title,
-                                                    &temp_path,
+                                                    temp_path,
                                                     path_profile,
                                                 ) {
                                                     Ok(_) => {}
@@ -282,7 +272,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             profile_manager::save_data(&title, &temp_path, &profile_path).unwrap();
         });
     }
-
     ui.run()?;
 
     Ok(())
