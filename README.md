@@ -21,8 +21,8 @@ move their contents into a target game directory.
 
 ### Installation
 
-**Recommended:** Download the latest pre-built binary for your operating system from the [**GitHub Releases
-**](https://github.com/pezfisk/OxideManager/releases) page.
+**Recommended:** Download the latest pre-built binary for your operating system from the [GitHub Releases
+](https://github.com/pezfisk/OxideManager/releases) page.
 
 **Alternatively:** Build from source (see below).
 

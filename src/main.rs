@@ -10,7 +10,7 @@ use std::{
     fs::{self},
     io::Write,
     path::{Path, PathBuf},
-    rc::Rc,
+    sync::Arc,
 };
 
 mod extract;
@@ -19,9 +19,9 @@ mod profile_manager;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let window = AppWindow::new()?;
-    let ui = Rc::new(window);
+    let ui = Arc::new(window);
 
-    let ui_handle = ui.as_weak();
+    let ui_handle = Arc::downgrade(&ui);
 
     println!("Hello, world!");
 
@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         // let archive_path = archive_path.clone();
         // let extract_to = extract_to.clone();
-        let ui_copy = Rc::clone(&ui);
+        let ui_copy = Arc::clone(&ui);
 
         ui.on_request_archive_path(move || {
             if let Some(path) = FileDialog::new().pick_folder() {
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     {
-        let ui_copy = Rc::clone(&ui);
+        let ui_copy = Arc::clone(&ui);
 
         ui.on_request_game_path(move || {
             if let Some(path) = FileDialog::new().pick_folder() {
@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     {
-        let ui_copy = Rc::clone(&ui);
+        let ui_copy = Arc::clone(&ui);
         ui.on_mod(move || {
             let path = PathBuf::from(ui_copy.get_archive_path().to_string());
             let game_path = PathBuf::from(ui_copy.get_game_path().to_string());
@@ -226,7 +226,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     {
-        let ui_copy = Rc::clone(&ui);
+        let ui_copy = Arc::clone(&ui);
 
         ui.on_restore(move |name| {
             let ini = match Ini::load_from_file(PathBuf::from(format!("profiles/{}.ini", name))) {
@@ -257,15 +257,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     {
-        let ui_copy = Rc::clone(&ui);
+        let ui_copy = Arc::clone(&ui);
 
         ui.on_reload_profiles(move || {
-            profile_manager::reload_profiles(&ui_copy).unwrap();
+            match profile_manager::reload_profiles(&ui_copy) {
+                Ok(profiles_model_rc) => {
+                    ui_copy.set_profiles(profiles_model_rc);
+                }
+                Err(e) => {
+                    println!("Failed to reload profiles: {}", e);
+                }
+            };
         });
     }
 
     {
-        let ui_copy = Rc::clone(&ui);
+        let ui_copy = Arc::clone(&ui);
 
         ui.on_update_profile(move |title, temp_path, profile_path| {
             println!("Data: {}, {}, {}", title, temp_path, profile_path);

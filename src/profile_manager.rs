@@ -8,6 +8,7 @@ use std::{
     io::Cursor,
     path::PathBuf,
     rc::Rc,
+    sync::Arc,
 };
 
 use reqwest::get;
@@ -58,7 +59,7 @@ pub fn save_data<'a>(
     Ok(())
 }
 
-pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
+pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<ModelRc<ProfileData>, Box<dyn Error>> {
     let mut profiles = Vec::new();
 
     let data_dir = data_dir().unwrap_or_else(|| {
@@ -78,8 +79,8 @@ pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
         let _ = fs::create_dir_all(&profile_path);
     }
 
-    for entry in fs::read_dir(&profile_path)? {
-        let entry = entry?;
+    for entry in fs::read_dir(&profile_path).unwrap() {
+        let entry = entry.unwrap();
         let path = entry.path();
 
         if !path.is_file() {
@@ -90,7 +91,7 @@ pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
             if let Some(section) = conf.section(Some("profile")) {
                 let title = section.get("title").unwrap_or("Unknown").to_string();
                 let try_image = section.get("cover_image").unwrap_or("Unknown").to_string();
-                let cover_image = load_cover_image(try_image, title.clone())?;
+                let cover_image = load_cover_image(try_image, title.clone()).unwrap();
 
                 let profile_data = ProfileData {
                     cover_image,
@@ -118,9 +119,8 @@ pub fn reload_profiles(ui: &Rc<AppWindow>) -> Result<(), Box<dyn Error>> {
 
     let profiles_model = Rc::new(VecModel::from(profiles));
     let profiles_model_rc = ModelRc::from(profiles_model);
-    ui.set_profiles(profiles_model_rc);
 
-    Ok(())
+    Ok(profiles_model_rc)
 }
 
 fn load_cover_image(path: String, title: String) -> Result<Image, Box<dyn Error>> {
