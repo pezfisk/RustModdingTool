@@ -1,6 +1,8 @@
 use crate::{profile_manager, AppWindow, ProfileData};
 use dirs::data_dir;
+use image::io::Reader as ImageReader;
 use ini::Ini;
+use reqwest::get;
 use slint::{Image, ModelRc, VecModel};
 use std::{
     error::Error,
@@ -10,11 +12,6 @@ use std::{
     rc::Rc,
     sync::Arc,
 };
-
-use reqwest::get;
-
-use image::io::Reader as ImageReader;
-
 use steamgriddb_api::query_parameters::QueryType::Grid;
 use steamgriddb_api::Client;
 use tokio::runtime::Runtime;
@@ -59,7 +56,7 @@ pub fn save_data<'a>(
     Ok(())
 }
 
-pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<ModelRc<ProfileData>, Box<dyn Error>> {
+pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
     let mut profiles = Vec::new();
 
     let data_dir = data_dir().unwrap_or_else(|| {
@@ -80,6 +77,7 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<ModelRc<ProfileData>, Box<
     }
 
     for entry in fs::read_dir(&profile_path).unwrap() {
+        ui.set_progress(0.5);
         let entry = entry.unwrap();
         let path = entry.path();
 
@@ -94,7 +92,7 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<ModelRc<ProfileData>, Box<
                 let cover_image = load_cover_image(try_image, title.clone()).unwrap();
 
                 let profile_data = ProfileData {
-                    cover_image,
+                    cover_image: cover_image,
                     title: title.into(),
                     year: section.get("year").unwrap_or("Unknown").to_string().into(),
                     path_to_profile: section
@@ -113,19 +111,20 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<ModelRc<ProfileData>, Box<
                 profiles.push(profile_data);
             }
         }
+
+        let profiles_model = Rc::new(VecModel::from(profiles.clone()));
+        let profiles_model_rc = ModelRc::from(profiles_model);
+
+        ui.set_profiles(profiles_model_rc)
     }
 
-    println!("Profiles: {}", profiles.len());
-
-    let profiles_model = Rc::new(VecModel::from(profiles));
-    let profiles_model_rc = ModelRc::from(profiles_model);
-
-    Ok(profiles_model_rc)
+    Ok(())
 }
 
 fn load_cover_image(path: String, title: String) -> Result<Image, Box<dyn Error>> {
     println!("Trying image in ini file: {}", path);
-    if let Ok(image) = slint::Image::load_from_path(&PathBuf::from(&path)) {
+    if PathBuf::from(&path).exists() {
+        let image = slint::Image::load_from_path(&PathBuf::from(&path))?;
         return Ok(image);
     }
 
@@ -143,21 +142,20 @@ fn load_cover_image(path: String, title: String) -> Result<Image, Box<dyn Error>
         path
     };
 
-    match slint::Image::load_from_path(&PathBuf::from(&profile)) {
-        Ok(image) => {
-            return Ok(image);
-        }
-        Err(..) => {
-            let rt = Runtime::new()?;
+    if PathBuf::from(&profile).exists() {
+        println!("Image found!");
+        let image = slint::Image::load_from_path(&PathBuf::from(&profile))?;
+        return Ok(image);
+    } else {
+        let rt = Runtime::new()?;
 
-            println!("Trying image from steamgriddb: {}", title);
-            match rt.block_on(profile_manager::get_cover_image(&title)) {
-                Ok(..) => {
-                    return Ok(slint::Image::load_from_path(&PathBuf::from(&profile))?);
-                }
-                Err(e) => {
-                    println!("Error: {}", e);
-                }
+        println!("Trying image from steamgriddb: {}", title);
+        match rt.block_on(profile_manager::get_cover_image(&title)) {
+            Ok(..) => {
+                return Ok(slint::Image::load_from_path(&PathBuf::from(&profile))?);
+            }
+            Err(e) => {
+                println!("Error: {}", e);
             }
         }
     }

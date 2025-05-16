@@ -85,8 +85,8 @@ export component AppWindow inherits Window {
                 checked: tab_index == 1;
                 clicked => {
                     tab_index = 1;
-                    root.reload_profiles();
                     modder.checked = false;
+                    root.reload_profiles();
                 }
             }
         }

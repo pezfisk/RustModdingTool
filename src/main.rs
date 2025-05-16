@@ -261,8 +261,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         ui.on_reload_profiles(move || {
             match profile_manager::reload_profiles(&ui_copy) {
-                Ok(profiles_model_rc) => {
-                    ui_copy.set_profiles(profiles_model_rc);
+                Ok(_) => {
+                    println!("Reloaded profiles");
                 }
                 Err(e) => {
                     println!("Failed to reload profiles: {}", e);
