@@ -3,5 +3,5 @@
 /tests
 /.idea
 /profiles
-/.env
+.env
 nohup.out
