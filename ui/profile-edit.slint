@@ -1,11 +1,20 @@
-import { Palette, StyleMetrics, LineEdit, Button } from "std-widgets.slint";
+import { Palette, StyleMetrics, LineEdit, Button, ScrollView } from "std-widgets.slint";
 import { ProfileState } from "profile-state.slint";
+import { GridView } from "grid_view.slint";
+
+export struct SearchResults {
+    SearchSteam: string,
+}
 
 export component EditWindow inherits Rectangle {
     private property <string> temp_path;
     private property <string> path_profile;
+    in-out property <string> search_steam: "";
+    in-out property <[SearchResults]> SearchSteamResults: [];
 
     callback update(string, string);
+    callback update_steam(string);
+    callback download(string);
 
     TouchArea {
         clicked => {
@@ -14,10 +23,10 @@ export component EditWindow inherits Rectangle {
     }
 
     child := Rectangle {
-        width: root.width / 2.5 + StyleMetrics.layout-spacing;
-        height: root.height / 2.5 + StyleMetrics.layout-spacing;
-        x: (root.width / 2) - (root.width / 6);
-        y: (root.height / 2) - (root.height / 6);
+        width: root.width / 1.25 + StyleMetrics.layout-spacing;
+        height: root.height / 1.25 + StyleMetrics.layout-spacing;
+        x: (root.width / 2) - (self.width / 2);
+        y: (root.height / 2) - (self.height / 2);
         background: Palette.background;
         border-color: Palette.border;
         border-width: 1px;
@@ -25,68 +34,134 @@ export component EditWindow inherits Rectangle {
 
         TouchArea { }
 
-        VerticalLayout {
-            padding: StyleMetrics.layout-padding;
-            spacing: StyleMetrics.layout-spacing;
-
+        HorizontalLayout {
+            width: child.width + 35px;
             VerticalLayout {
-                Text {
-                    horizontal-alignment: center;
-                    vertical-alignment: bottom;
-                    text: "Change temp path (don't change if you don't know what you are doing)";
-                }
-
-                Rectangle {
-                    height: 10%;
-                    opacity: 0;
-                }
-
-                LineEdit {
-                    placeholder-text: "Temp path";
-                    edited(text) => {
-                        self.text = text;
-                        root.temp_path = text;
-                    }
-                }
-            }
-
-            VerticalLayout {
-                Text {
-                    horizontal-alignment: center;
-                    vertical-alignment: bottom;
-                    text: "Change profile path (game directory)";
-                }
-
-                Rectangle {
-                    height: 10%;
-                    opacity: 0;
-                }
-
-                LineEdit {
-                    placeholder-text: "Path to profile";
-                    edited(text) => {
-                        self.text = text;
-                        root.path_profile = text;
-                    }
-                }
-            }
-
-            HorizontalLayout {
-                height: 10%;
+                padding: StyleMetrics.layout-padding;
                 spacing: StyleMetrics.layout-spacing;
-                Button {
-                    text: "Save";
-                    clicked => {
-                        root.update(root.temp_path, root.path_profile);
-                        root.visible = false;
+
+                HorizontalLayout {
+                    width: child.width;
+                    spacing: StyleMetrics.layout-spacing;
+                    padding: StyleMetrics.layout-padding;
+                    VerticalLayout {
+                        width: parent.width / 2;
+                        VerticalLayout {
+                            Text {
+                                horizontal-alignment: center;
+                                vertical-alignment: bottom;
+                                text: "Change temp path (don't change if you don't know what you are doing)";
+                            }
+
+                            Rectangle {
+                                height: 10%;
+                                opacity: 0;
+                            }
+
+                            LineEdit {
+                                placeholder-text: "Temp path";
+                                edited(text) => {
+                                    self.text = text;
+                                    root.temp_path = text;
+                                }
+                            }
+                        }
+
+                        VerticalLayout {
+                            Text {
+                                horizontal-alignment: center;
+                                vertical-alignment: bottom;
+                                text: "Change profile path (game directory)";
+                            }
+
+                            Rectangle {
+                                height: 10%;
+                                opacity: 0;
+                            }
+
+                            LineEdit {
+                                placeholder-text: "Path to profile";
+                                edited(text) => {
+                                    self.text = text;
+                                    root.path_profile = text;
+                                }
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        width: parent.width / 2;
+                        padding: StyleMetrics.layout-padding;
+                        spacing: StyleMetrics.layout-spacing;
+                        VerticalLayout {
+                            spacing: StyleMetrics.layout-spacing * 1.1;
+
+                            VerticalLayout {
+                                spacing: StyleMetrics.layout-spacing;
+                                height: 90%;
+                                // Make a scrollable list of results
+                                view := GridView {
+                                    viewport-height: Math.round(SearchSteamResults.length / self.columns) * view.preferredCellHeight * 1px;
+                                    viewport-width: self.width;
+                                    columns: 1;
+                                    preferredCellHeight: 40;
+
+                                    for result[index] in root.SearchSteamResults: Button {
+                                        width: view.expectedWidth * 1px;
+                                        height: view.preferredCellHeight * 1px;
+                                        x: (Math.mod(index, view.columns)) * self.width;
+                                        y: Math.floor(index / view.columns) * self.height;
+                                        text: result.SearchSteam;
+
+                                        clicked => {
+                                            root.download(result.SearchSteam);
+                                        }
+                                    }
+                                }
+                            }
+
+                                // Bottom
+
+                            HorizontalLayout {
+                                spacing: StyleMetrics.layout-spacing;
+                                height: 10%;
+                                LineEdit {
+                                    placeholder-text: "Game name";
+                                    edited(text) => {
+                                        self.text = text;
+                                        root.search_steam = text;
+                                    }
+                                }
+
+                                Button {
+                                    text: "Search";
+                                    clicked => {
+                                        root.update_steam(root.search_steam);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                Button {
-                    text: "Cancel";
-                    clicked => {
-                        root.opacity = 0;
-                        root.visible = false;
+                HorizontalLayout {
+                    height: 10%;
+                    spacing: StyleMetrics.layout-spacing;
+                    Button {
+                        text: "Save";
+                        clicked => {
+                            root.update(root.temp_path, root.path_profile);
+                            root.visible = false;
+                        }
+                    }
+
+                    Button {
+                        text: "Cancel";
+                        clicked => {
+                            root.update("", "");
+                            root.opacity = 0;
+                            root.visible = false;
+                        }
                     }
                 }
             }

@@ -1,10 +1,12 @@
-use crate::{profile_manager, AppWindow, ProfileData};
+use crate::{profile_manager, AppWindow, ProfileData, SearchResults};
 use dirs::data_dir;
+use dotenv::dotenv;
 use image::io::Reader as ImageReader;
 use ini::Ini;
 use reqwest::get;
 use slint::{Image, ModelRc, VecModel};
 use std::{
+    env,
     error::Error,
     fs::{self},
     io::Cursor,
@@ -89,7 +91,7 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
             if let Some(section) = conf.section(Some("profile")) {
                 let title = section.get("title").unwrap_or("Unknown").to_string();
                 let try_image = section.get("cover_image").unwrap_or("Unknown").to_string();
-                let cover_image = load_cover_image(try_image, title.clone()).unwrap();
+                let cover_image = load_cover_image(try_image, title.clone())?;
 
                 let profile_data = ProfileData {
                     cover_image: cover_image,
@@ -129,7 +131,6 @@ fn load_cover_image(path: String, title: String) -> Result<Image, Box<dyn Error>
     }
 
     println!("Trying image with same name: {}", title);
-
     let data_dir = data_dir().unwrap_or_else(|| {
         println!("Failed to get data directory");
         PathBuf::new()
@@ -149,13 +150,15 @@ fn load_cover_image(path: String, title: String) -> Result<Image, Box<dyn Error>
     } else {
         let rt = Runtime::new()?;
 
-        println!("Trying image from steamgriddb: {}", title);
-        match rt.block_on(profile_manager::get_cover_image(&title)) {
-            Ok(..) => {
-                return Ok(slint::Image::load_from_path(&PathBuf::from(&profile))?);
-            }
-            Err(e) => {
-                println!("Error: {}", e);
+        if !path.is_empty() {
+            println!("Trying image from steamgriddb: {}", title);
+            match rt.block_on(profile_manager::get_cover_image(&title)) {
+                Ok(..) => {
+                    return Ok(slint::Image::load_from_path(&PathBuf::from(&profile))?);
+                }
+                Err(e) => {
+                    println!("Error: {}", e);
+                }
             }
         }
     }
@@ -169,8 +172,6 @@ fn load_cover_image(path: String, title: String) -> Result<Image, Box<dyn Error>
 }
 
 pub async fn get_cover_image(title: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let client_key = Client::new("");
-
     let data_dir = data_dir().unwrap_or_else(|| {
         println!("Failed to get data directory");
         PathBuf::new()
@@ -186,44 +187,107 @@ pub async fn get_cover_image(title: &str) -> Result<(), Box<dyn std::error::Erro
     println!("profile: {}", profile.display());
 
     if !profile.exists() {
-        let client = client_key;
-        let games = client.search(title).await?;
-        let first_game = games.iter().next().ok_or("No games found")?;
-
-        if first_game.name != title {
-            return Err(format!("Game not found: {}", title).into());
-        }
-
-        assert_eq!(title, first_game.name);
-        let images = client.get_images_for_id(first_game.id, &Grid(None)).await?;
-        let first_image = images.iter().next().ok_or("No images found")?;
-
-        println!("Getting image from: {:?}", first_image.url);
-
-        let response = get(&first_image.url).await?;
-
-        if !response.status().is_success() {
-            return Err(format!(
-                "Failed to download image: HTTP status code {}",
-                response.status()
-            )
-            .into());
-        }
-
-        let image_bytes = response.bytes().await?;
-
-        println!("Image data downloaded.");
-
-        let cursor = Cursor::new(image_bytes);
-        let reader = ImageReader::new(cursor).with_guessed_format()?;
-
-        let img = reader.decode()?;
-
-        println!("Image decoded successfully.");
-
-        img.save(profile)?;
-
-        println!("Image saved");
+        download_image(title, profile).await;
     }
+    Ok(())
+}
+
+pub async fn download_image(
+    title: &str,
+    profile: PathBuf,
+) -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().ok();
+    let client_key = env::var("STEAMGRIDDB_API_KEY").expect("STEAMGRIDDB_API_KEY not set");
+    let client = Client::new(client_key);
+    let games = client.search(title).await?;
+    let first_game = games.iter().next().ok_or("No games found")?;
+
+    if first_game.name != title {
+        return Err(format!("Game not found: {}", title).into());
+    }
+
+    assert_eq!(title, first_game.name);
+    let images = client.get_images_for_id(first_game.id, &Grid(None)).await?;
+    let first_image = images.iter().next().ok_or("No images found")?;
+
+    println!("Getting image from: {:?}", first_image.url);
+
+    let response = get(&first_image.url).await?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "Failed to download image: HTTP status code {}",
+            response.status()
+        )
+        .into());
+    }
+
+    let image_bytes = response.bytes().await?;
+
+    println!("Image data downloaded.");
+
+    let cursor = Cursor::new(image_bytes);
+    let reader = ImageReader::new(cursor).with_guessed_format()?;
+
+    let img = reader.decode()?;
+
+    println!("Image decoded successfully.");
+
+    if profile.exists() {
+        fs::remove_file(&profile)?;
+    }
+
+    img.save(profile)?;
+
+    println!("Image saved");
+
+    Ok(())
+}
+
+pub async fn search_steamgrid(
+    title: &str,
+    search: &str,
+    ui: &Arc<AppWindow>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().ok();
+    let client_key = env::var("STEAMGRIDDB_API_KEY").expect("STEAMGRIDDB_API_KEY not set");
+
+    let mut results = Vec::new();
+
+    let data_dir = data_dir().unwrap_or_else(|| {
+        println!("Failed to get data directory");
+        PathBuf::new()
+    });
+
+    let profile = {
+        let mut path = data_dir;
+        let profile_path = PathBuf::from(format!("oxide/profiles/{}.png", title));
+        path.push(profile_path);
+        path
+    };
+
+    println!("profile: {}", profile.display());
+
+    let client = Client::new(client_key);
+    let games = client.search(search).await?;
+    let first_game = games.iter().next().ok_or("No games found")?;
+
+    for game in &games {
+        println!("Found game: {}", game.name);
+
+        let result_data = SearchResults {
+            SearchSteam: game.name.clone().into(),
+        };
+
+        results.push(result_data.clone());
+    }
+
+    println!("Games: {}", games.len());
+
+    let results_model = Rc::new(VecModel::from(results.clone()));
+    let results_model_rc = ModelRc::from(results_model);
+
+    ui.set_SearchResults(results_model_rc);
+
     Ok(())
 }

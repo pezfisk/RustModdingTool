@@ -1,7 +1,7 @@
 /target
 /.temp
 /tests
-test.png
 /.idea
 /profiles
+/.env
 nohup.out

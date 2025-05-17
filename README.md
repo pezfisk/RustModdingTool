@@ -42,9 +42,9 @@ move their contents into a target game directory.
    ```
 
 2. **Setup SteamGridDB API Key:**
-   In `src/profile_manager.rs`
-    ```rust
-   let client_key = Client::new("PUT_YOUR_API_KEY_HERE");
+   Create a file named `.env` in the root directory and add the following line:
+    ```env
+    STEAMGRIDDB_API_KEY=YOUR_API_KEY
     ```
 
 3. **Build (Native):**

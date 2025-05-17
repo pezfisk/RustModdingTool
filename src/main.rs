@@ -12,6 +12,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use tokio::runtime::Runtime;
 
 mod extract;
 mod file_manager;
@@ -277,8 +278,53 @@ fn main() -> Result<(), Box<dyn Error>> {
         ui.on_update_profile(move |title, temp_path, profile_path| {
             println!("Data: {}, {}, {}", title, temp_path, profile_path);
             profile_manager::save_data(&title, &temp_path, &profile_path).unwrap();
+            match profile_manager::reload_profiles(&ui_copy) {
+                Ok(_) => {
+                    println!("Reloaded profiles");
+                }
+                Err(e) => {
+                    println!("Failed to reload profiles: {}", e);
+                }
+            };
         });
     }
+
+    {
+        let ui_copy = Arc::clone(&ui);
+
+        ui.on_update_profile_image(move |title, search_game| {
+            let rt = Runtime::new().unwrap();
+            let _ = rt.block_on(profile_manager::search_steamgrid(
+                &title,
+                &search_game,
+                &ui_copy,
+            ));
+        });
+    }
+
+    {
+        let ui_copy = Arc::clone(&ui);
+
+        ui.on_download_profile_image(move |title, search_game| {
+            println!("Downloading image: {}, {}", title, search_game);
+
+            let data_dir = data_dir().unwrap_or_else(|| {
+                println!("Failed to get data directory");
+                PathBuf::new()
+            });
+
+            let profile = {
+                let mut path = data_dir;
+                let profile_path = PathBuf::from(format!("oxide/profiles/{}.png", title));
+                path.push(profile_path);
+                path
+            };
+
+            let rt = Runtime::new().unwrap();
+            let _ = rt.block_on(profile_manager::download_image(&search_game, profile));
+        })
+    }
+
     ui.run()?;
 
     Ok(())

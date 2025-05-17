@@ -2,7 +2,7 @@ import { StandardButton, Button, VerticalBox, LineEdit, Switch, GroupBox, Progre
 import { ProfileTile, ProfileData } from "profile-images.slint";
 import { ProfileState } from "profile-state.slint";
 import { GridView } from "grid_view.slint";
-import { EditWindow } from "profile-edit.slint";
+import { EditWindow, SearchResults } from "profile-edit.slint";
 
 export component AppWindow inherits Window {
     in-out property <float> progress: 0.5;
@@ -16,6 +16,7 @@ export component AppWindow inherits Window {
     in-out property <bool> experimental: false;
 
     in-out property <[ProfileData]> profiles: [];
+    in-out property <[SearchResults]> SearchResults: [];
 
     private property <int> tab_index: 0;
 
@@ -34,6 +35,8 @@ export component AppWindow inherits Window {
     callback restore(string);
     callback reload_profiles();
     callback update_profile(string, string, string);
+    callback update_profile_image(string, string);
+    callback download_profile_image(string, string);
 
     title: "Oxide Manager";
     min-height: 750px;
@@ -331,9 +334,18 @@ export component AppWindow inherits Window {
             duration: 100ms;
             easing: ease-in;
         }
+        SearchSteamResults: root.SearchResults;
 
         update(temp_path, path_profile) => {
             update_profile(root.selected_title, temp_path, path_profile);
+        }
+
+        update_steam(search_steam) => {
+            update_profile_image(root.selected_title, search_steam);
+        }
+
+        download(search_steam) => {
+            download_profile_image(root.selected_title, search_steam);
         }
     }
 
