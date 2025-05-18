@@ -23,8 +23,8 @@ export component EditWindow inherits Rectangle {
     }
 
     child := Rectangle {
-        width: root.width / 1.25 + StyleMetrics.layout-spacing;
-        height: root.height / 1.25 + StyleMetrics.layout-spacing;
+        width: root.width / 1.2 + 5px;
+        height: root.height / 1.2 + StyleMetrics.layout-spacing;
         x: (root.width / 2) - (self.width / 2);
         y: (root.height / 2) - (self.height / 2);
         background: Palette.background;
@@ -35,17 +35,14 @@ export component EditWindow inherits Rectangle {
         TouchArea { }
 
         HorizontalLayout {
-            width: child.width + 35px;
             VerticalLayout {
                 padding: StyleMetrics.layout-padding;
                 spacing: StyleMetrics.layout-spacing;
 
                 HorizontalLayout {
-                    width: child.width;
-                    spacing: StyleMetrics.layout-spacing;
-                    padding: StyleMetrics.layout-padding;
+                    width: child.width - 15px;
                     VerticalLayout {
-                        width: parent.width / 2;
+                        width: child.width / 2.1;
                         VerticalLayout {
                             Text {
                                 horizontal-alignment: center;
@@ -65,6 +62,11 @@ export component EditWindow inherits Rectangle {
                                     root.temp_path = text;
                                 }
                             }
+                        }
+
+                        Rectangle {
+                            height: 10%;
+                            opacity: 0;
                         }
 
                         VerticalLayout {
@@ -90,7 +92,7 @@ export component EditWindow inherits Rectangle {
                     }
 
                     VerticalLayout {
-                        width: parent.width / 2;
+                        width: child.width / 2;
                         padding: StyleMetrics.layout-padding;
                         spacing: StyleMetrics.layout-spacing;
                         VerticalLayout {
@@ -126,6 +128,7 @@ export component EditWindow inherits Rectangle {
                                 spacing: StyleMetrics.layout-spacing;
                                 height: 10%;
                                 LineEdit {
+                                    width: 80%;
                                     placeholder-text: "Game name";
                                     edited(text) => {
                                         self.text = text;
@@ -134,6 +137,7 @@ export component EditWindow inherits Rectangle {
                                 }
 
                                 Button {
+                                    width: 20%;
                                     text: "Search";
                                     clicked => {
                                         root.update_steam(root.search_steam);

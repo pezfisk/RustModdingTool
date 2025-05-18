@@ -321,7 +321,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
 
             let rt = Runtime::new().unwrap();
-            let _ = rt.block_on(profile_manager::download_image(&search_game, profile));
+            let _ = rt.block_on(profile_manager::download_image(&search_game, &profile));
+            
+            let image = slint::Image::load_from_path(&profile).unwrap();
+            ui_copy.set_selected_cover_image(image);
         })
     }
 

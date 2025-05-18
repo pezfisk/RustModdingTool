@@ -20,7 +20,7 @@ export component AppWindow inherits Window {
 
     private property <int> tab_index: 0;
 
-    private property <image> selected_cover_image;
+    in-out property <image> selected_cover_image;
     private property <string> selected_title;
     private property <string> selected_year;
     private property <string> selected_path_to_profile;

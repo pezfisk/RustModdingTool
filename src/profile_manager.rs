@@ -187,14 +187,14 @@ pub async fn get_cover_image(title: &str) -> Result<(), Box<dyn std::error::Erro
     println!("profile: {}", profile.display());
 
     if !profile.exists() {
-        download_image(title, profile).await;
+        download_image(title, &profile).await;
     }
     Ok(())
 }
 
 pub async fn download_image(
     title: &str,
-    profile: PathBuf,
+    profile: &PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     let client_key = env::var("STEAMGRIDDB_API_KEY").expect("STEAMGRIDDB_API_KEY not set");
