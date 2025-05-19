@@ -250,7 +250,13 @@ pub async fn search_steamgrid(
     ui: &Arc<AppWindow>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
-    let client_key = env::var("STEAMGRIDDB_API_KEY").expect("STEAMGRIDDB_API_KEY not set");
+    let client_key = match env::var("STEAMGRIDDB_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            println!("STEAMGRIDDB_API_KEY not set");
+            return Err("STEAMGRIDDB_API_KEY not set".into());
+        }
+    };
 
     let mut results = Vec::new();
 

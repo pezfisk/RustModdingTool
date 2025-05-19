@@ -42,9 +42,9 @@ export component EditWindow inherits Rectangle {
                 HorizontalLayout {
                     width: child.width - 15px;
                     VerticalLayout {
-                        width: child.width / 2.1;
                         VerticalLayout {
                             Text {
+                                height: child.height / 10;
                                 horizontal-alignment: center;
                                 vertical-alignment: bottom;
                                 text: "Change temp path (don't change if you don't know what you are doing)";
@@ -56,6 +56,7 @@ export component EditWindow inherits Rectangle {
                             }
 
                             LineEdit {
+                                height: 50px;
                                 placeholder-text: "Temp path";
                                 edited(text) => {
                                     self.text = text;
@@ -71,6 +72,7 @@ export component EditWindow inherits Rectangle {
 
                         VerticalLayout {
                             Text {
+                                height: child.height / 10;
                                 horizontal-alignment: center;
                                 vertical-alignment: bottom;
                                 text: "Change profile path (game directory)";
@@ -82,6 +84,7 @@ export component EditWindow inherits Rectangle {
                             }
 
                             LineEdit {
+                                height: 50px;
                                 placeholder-text: "Path to profile";
                                 edited(text) => {
                                     self.text = text;
@@ -92,7 +95,6 @@ export component EditWindow inherits Rectangle {
                     }
 
                     VerticalLayout {
-                        width: child.width / 2;
                         padding: StyleMetrics.layout-padding;
                         spacing: StyleMetrics.layout-spacing;
                         VerticalLayout {
@@ -100,7 +102,6 @@ export component EditWindow inherits Rectangle {
 
                             VerticalLayout {
                                 spacing: StyleMetrics.layout-spacing;
-                                height: 90%;
                                 // Make a scrollable list of results
                                 view := GridView {
                                     viewport-height: Math.round(SearchSteamResults.length / self.columns) * view.preferredCellHeight * 1px;
@@ -125,8 +126,8 @@ export component EditWindow inherits Rectangle {
                                 // Bottom
 
                             HorizontalLayout {
+                            width: child.width / 2 - 13px;
                                 spacing: StyleMetrics.layout-spacing;
-                                height: 10%;
                                 LineEdit {
                                     width: 80%;
                                     placeholder-text: "Game name";
@@ -137,7 +138,6 @@ export component EditWindow inherits Rectangle {
                                 }
 
                                 Button {
-                                    width: 20%;
                                     text: "Search";
                                     clicked => {
                                         root.update_steam(root.search_steam);
