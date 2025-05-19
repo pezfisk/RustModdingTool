@@ -78,9 +78,9 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
         let _ = fs::create_dir_all(&profile_path);
     }
 
-    for entry in fs::read_dir(&profile_path).unwrap() {
+    for entry in fs::read_dir(&profile_path)? {
         ui.set_progress(0.5);
-        let entry = entry.unwrap();
+        let entry = entry?;
         let path = entry.path();
 
         if !path.is_file() {
@@ -94,7 +94,7 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
                 let cover_image = load_cover_image(try_image, title.clone())?;
 
                 let profile_data = ProfileData {
-                    cover_image: cover_image,
+                    cover_image,
                     title: title.into(),
                     year: section.get("year").unwrap_or("Unknown").to_string().into(),
                     path_to_profile: section
@@ -119,6 +119,7 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
 
         ui.set_profiles(profiles_model_rc)
     }
+    println!("profiles: {}", profiles.len());
 
     Ok(())
 }
@@ -187,7 +188,7 @@ pub async fn get_cover_image(title: &str) -> Result<(), Box<dyn std::error::Erro
     println!("profile: {}", profile.display());
 
     if !profile.exists() {
-        download_image(title, &profile).await;
+        download_image(title, &profile).await?;
     }
     Ok(())
 }

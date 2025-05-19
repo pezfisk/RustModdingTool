@@ -73,7 +73,13 @@ pub fn copy_to_dir(
             )?;
         } else if metadata.is_file() {
             if dst_path.exists() {
-                let copy_bak_to = split_path(&dst_path, profile).unwrap();
+                let copy_bak_to = match split_path(&dst_path, profile) {
+                    Some(x) => x,
+                    None => {
+                        println!("Failed to split path: {}", dst_path.display());
+                        continue
+                    }
+                };
                 println!(
                     "Backing up file: '{}' -> '{}'",
                     dst_path.display(),
@@ -149,11 +155,17 @@ pub fn restore(profile: &Path) -> Result<(), Box<dyn Error>> {
     let file_content = fs::read_to_string(&existing_file_path)?;
     let profile_existing = file_content.lines();
     let profile_skip = profile_existing.skip(1);
-    let profile_filename = profile.file_name().unwrap();
+    let profile_filename = match profile.file_name() {
+        Some(x) => x,
+        None => {
+            println!("Failed to get profile name");
+            return Err("Failed to get profile name".into());
+        },
+    };
 
     println!("Restoring files from backup");
     for path in profile_skip {
-        let copy_bak_to = match path.split_once(profile_filename.to_str().unwrap()) {
+        let copy_bak_to = match path.split_once(profile_filename.to_str().unwrap_or("")) {
             Some((_, copy_bak_to)) => PathBuf::from(copy_bak_to),
             None => continue,
         };

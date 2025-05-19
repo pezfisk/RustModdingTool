@@ -12,7 +12,7 @@ pub fn extract_file(archive_path: &str, extract_to: &Path) -> Result<(), Box<dyn
             PathBuf::new()
         });
         let extract_to = format!("{}/{}extracted", data_dir.display(), extract_to.display());
-        let _result = match extension.to_str().unwrap() {
+        let _result = match extension.to_str().unwrap_or("") {
             "zip" => extract_zip(archive_path, &extract_to),
             "rar" => extract_rar(archive_path, &extract_to),
             "7z" => extract_7z(archive_path, &extract_to),
@@ -70,7 +70,7 @@ fn extract_rar(archive_path: &str, extract_to: &str) -> Result<(), Box<dyn Error
 
     let mut archive = Archive::new(archive_path).open_for_processing()?;
 
-    while let Some(header) = archive.read_header().unwrap() {
+    while let Some(header) = archive.read_header()? {
         println!(
             "Creating file at: .temp/{}",
             header.entry().filename.to_string_lossy()

@@ -97,126 +97,151 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("Path: '{}'", path.display());
             ui_copy.set_progress(0.1);
             if path.exists() {
-                for entry in fs::read_dir(&*path).unwrap() {
-                    let entry = entry.unwrap();
+                for entry in match fs::read_dir(&*path) {
+                    Ok(x) => x,
+                    Err(_) => panic!("Failed to read directory"),
+                } {
+                    let Ok(entry) = entry else { continue };
                     println!("Entry: {}", entry.path().display());
                     let path = entry.path();
 
                     if let Some(extension) = path.extension() {
-                        if exts.contains(&extension.to_str().unwrap()) {
-                            match extract::extract_file(
-                                path.to_str().unwrap(),
-                                &extract_to_data_dir,
-                            ) {
-                                Ok(_) => {
-                                    if let Some(ui) = ui_handle.upgrade() {
-                                        println!("Extracted files correctly");
-                                        ui.set_footer(SharedString::from(
-                                            "Successfully extracted files",
-                                        ));
-                                        ui.set_progress(0.5);
-                                    }
+                        if let Some(ext_str) = extension.to_str() {
+                            if exts.contains(&ext_str) {
+                                if let Some(path_str) = path.to_str() {
+                                    match extract::extract_file(
+                                        path_str,
+                                        &extract_to_data_dir,
+                                    ) {
+                                        Ok(_) => {
+                                            if let Some(ui) = ui_handle.upgrade() {
+                                                println!("Extracted files correctly");
+                                                ui.set_footer(SharedString::from(
+                                                    "Successfully extracted files",
+                                                ));
+                                                ui.set_progress(0.5);
+                                            }
 
-                                    println!("Now copying over to target directory");
+                                            println!("Now copying over to target directory");
 
-                                    let log_path =
-                                        PathBuf::from(&extract_to_data_dir).join("existing.txt");
-                                    println!("Path: {}", game_path.display());
+                                            let log_path =
+                                                PathBuf::from(&extract_to_data_dir).join("existing.txt");
+                                            println!("Path: {}", game_path.display());
 
-                                    {
-                                        if log_path.exists() {
-                                            match fs::remove_file(&log_path) {
-                                                Ok(_) => {}
+                                            {
+                                                if log_path.exists() {
+                                                    match fs::remove_file(&log_path) {
+                                                        Ok(_) => {}
+                                                        Err(e) => {
+                                                            if let Some(ui) = ui_handle.upgrade() {
+                                                                println!(
+                                                                    "Failed to remove log file: {}",
+                                                                    e
+                                                                );
+                                                                let error = format!("Error: {}", e);
+                                                                ui.set_footer(SharedString::from(error));
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            {
+                                                let mut log_file = if let Ok(file) = fs::File::create(&log_path) {
+                                                    file
+                                                } else {
+                                                    eprintln!("Failed to create log file '{}'", log_path.display());
+                                                    return;
+                                                };
+
+                                                match log_file.write_all(
+                                                    format!("{}\n", &game_path.display()).as_bytes(),
+                                                ) {
+                                                    Ok(_) => {}
+                                                    Err(e) => {
+                                                        if let Some(ui) = ui_handle.upgrade() {
+                                                            println!("Failed to write log file: {}", e);
+                                                            let error = format!("Error: {}", e);
+                                                            ui.set_footer(SharedString::from(error));
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            match file_manager::copy_to_dir(
+                                                &game_path,
+                                                &extract_to_data_dir,
+                                                Path::new(""),
+                                                overwrite,
+                                                &log_path,
+                                                symlink,
+                                            ) {
+                                                Ok(_) => {
+                                                    if let Some(ui) = ui_handle.upgrade() {
+                                                        println!("Copied files correctly");
+                                                        ui.set_footer(SharedString::from(
+                                                            "Successfully copied files",
+                                                        ));
+                                                        ui.set_progress(1.0);
+
+                                                        let title = match game_path.file_name() {
+                                                            Some(name) => name.to_string_lossy(),
+                                                            None => {
+                                                                eprintln!("Failed to get file name from game_path: {}", game_path.display());
+                                                                ui.set_footer(SharedString::from("Failed to determine game name"));
+                                                                return;
+                                                            }
+                                                        };
+
+                                                        let temp_path = match extract_to_data_dir.to_str() {
+                                                            Some(path) => path,
+                                                            None => {
+                                                                eprintln!("Failed to convert extract_to_data_dir to string: {}", extract_to_data_dir.display());
+                                                                ui.set_footer(SharedString::from("Failed to determine data directory"));
+                                                                return;
+                                                            }
+                                                        };
+
+                                                        let path_profile = &game_path.to_string_lossy();
+
+                                                        match profile_manager::save_data(
+                                                            &title,
+                                                            temp_path,
+                                                            path_profile,
+                                                        ) {
+                                                            Ok(_) => {}
+                                                            Err(e) => {
+                                                                if let Some(ui) = ui_handle.upgrade() {
+                                                                    println!("Failed to save data: {}", e);
+                                                                    let error = format!("Error: {}", e);
+                                                                }
+                                                            }
+                                                        }
+
+                                                        if let Err(e) = profile_manager::reload_profiles(&ui_copy) {
+                                                            println!("Failed to reload profiles: {}", e);
+                                                        }
+                                                    }
+                                                }
                                                 Err(e) => {
                                                     if let Some(ui) = ui_handle.upgrade() {
-                                                        println!(
-                                                            "Failed to remove log file: {}",
-                                                            e
-                                                        );
+                                                        println!("Failed to copy files: {}", e);
                                                         let error = format!("Error: {}", e);
                                                         ui.set_footer(SharedString::from(error));
                                                     }
                                                 }
                                             }
                                         }
-                                    }
-
-                                    {
-                                        let mut log_file = fs::File::create(&log_path).unwrap();
-                                        match log_file.write_all(
-                                            format!("{}\n", &game_path.display()).as_bytes(),
-                                        ) {
-                                            Ok(_) => {}
-                                            Err(e) => {
-                                                if let Some(ui) = ui_handle.upgrade() {
-                                                    println!("Failed to write log file: {}", e);
-                                                    let error = format!("Error: {}", e);
-                                                    ui.set_footer(SharedString::from(error));
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    match file_manager::copy_to_dir(
-                                        &game_path,
-                                        &extract_to_data_dir,
-                                        Path::new(""),
-                                        overwrite,
-                                        &log_path,
-                                        symlink,
-                                    ) {
-                                        Ok(_) => {
-                                            if let Some(ui) = ui_handle.upgrade() {
-                                                println!("Copied files correctly");
-                                                ui.set_footer(SharedString::from(
-                                                    "Successfully copied files",
-                                                ));
-                                                ui.set_progress(1.0);
-
-                                                let title = &game_path
-                                                    .file_name()
-                                                    .unwrap()
-                                                    .to_string_lossy();
-
-                                                let temp_path =
-                                                    &extract_to_data_dir.to_str().unwrap();
-
-                                                let path_profile = &game_path.to_string_lossy();
-
-                                                match profile_manager::save_data(
-                                                    title,
-                                                    temp_path,
-                                                    path_profile,
-                                                ) {
-                                                    Ok(_) => {}
-                                                    Err(e) => {
-                                                        if let Some(ui) = ui_handle.upgrade() {
-                                                            println!("Failed to save data: {}", e);
-                                                            let error = format!("Error: {}", e);
-                                                        }
-                                                    }
-                                                }
-
-                                                profile_manager::reload_profiles(&ui_copy).unwrap();
-                                            }
-                                        }
                                         Err(e) => {
                                             if let Some(ui) = ui_handle.upgrade() {
-                                                println!("Failed to copy files: {}", e);
+                                                println!("Failed to extract files: {}", e);
                                                 let error = format!("Error: {}", e);
                                                 ui.set_footer(SharedString::from(error));
                                             }
                                         }
-                                    }
+                                    };
                                 }
-                                Err(e) => {
-                                    if let Some(ui) = ui_handle.upgrade() {
-                                        println!("Failed to extract files: {}", e);
-                                        let error = format!("Error: {}", e);
-                                        ui.set_footer(SharedString::from(error));
-                                    }
-                                }
-                            };
+                            }
                         }
                     }
                 }
@@ -247,7 +272,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("Restoring profile: {}", profile.display());
             match file_manager::restore(&profile) {
                 Ok(_) => {
-                    profile_manager::reload_profiles(&ui_copy).unwrap();
+                    profile_manager::reload_profiles(&ui_copy).unwrap_or_else(|_| println!("Failed to reload profiles"));
                     println!("Restored profile: {}", profile.display());
                 }
                 Err(e) => {
@@ -277,7 +302,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         ui.on_update_profile(move |title, temp_path, profile_path| {
             println!("Data: {}, {}, {}", title, temp_path, profile_path);
-            profile_manager::save_data(&title, &temp_path, &profile_path).unwrap();
+            profile_manager::save_data(&title, &temp_path, &profile_path).unwrap_or_else(|_| println!("Failed to save data"));
             match profile_manager::reload_profiles(&ui_copy) {
                 Ok(_) => {
                     println!("Reloaded profiles");
@@ -293,7 +318,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         let ui_copy = Arc::clone(&ui);
 
         ui.on_update_profile_image(move |title, search_game| {
-            let rt = Runtime::new().unwrap();
+            let rt = match Runtime::new() {
+                Ok(x) => x,
+                Err(_) => {
+                    println!("Failed to create runtime");
+                    return;
+                }
+            };
+
             let _ = rt.block_on(profile_manager::search_steamgrid(
                 &title,
                 &search_game,
@@ -320,10 +352,23 @@ fn main() -> Result<(), Box<dyn Error>> {
                 path
             };
 
-            let rt = Runtime::new().unwrap();
+            let rt = match Runtime::new() {
+                Ok(x) => x,
+                Err(_) => {
+                    println!("Failed to create runtime");
+                    return;
+                }
+            };
+
             let _ = rt.block_on(profile_manager::download_image(&search_game, &profile));
             
-            let image = slint::Image::load_from_path(&profile).unwrap();
+            let image = match slint::Image::load_from_path(&profile) {
+                Ok(x) => x,
+                Err(_) => {
+                    println!("Failed to load image");
+                    return;
+                }
+            };
             ui_copy.set_selected_cover_image(image);
         })
     }
