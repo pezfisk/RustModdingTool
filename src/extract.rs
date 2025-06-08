@@ -3,6 +3,7 @@ use std::{
     error::Error,
     fs, io,
     path::{Path, PathBuf},
+    thread,
 };
 
 pub fn extract_file(archive_path: &str, extract_to: &Path) -> Result<(), Box<dyn Error>> {
@@ -11,15 +12,22 @@ pub fn extract_file(archive_path: &str, extract_to: &Path) -> Result<(), Box<dyn
             println!("Failed to get data directory");
             PathBuf::new()
         });
-        let extract_to = format!("{}/{}extracted", data_dir.display(), extract_to.display());
+
+        let archive_path_owned = archive_path.to_string();
+        let extract_to_owned = format!("{}/{}extracted", data_dir.display(), extract_to.display());
         let _result = match extension.to_str().unwrap_or("") {
-            "zip" => extract_zip(archive_path, &extract_to),
-            "rar" => extract_rar(archive_path, &extract_to),
-            "7z" => extract_7z(archive_path, &extract_to),
-            _ => {
+            "zip" => thread::spawn(move || {
+                extract_zip(&archive_path_owned, &extract_to_owned);
+            }),
+            "rar" => thread::spawn(move || {
+                extract_rar(&archive_path_owned, &extract_to_owned);
+            }),
+            "7z" => thread::spawn(move || {
+                extract_zip(&archive_path_owned, &extract_to_owned);
+            }),
+            _ => thread::spawn(move || {
                 println!("Not supported");
-                Ok(())
-            }
+            }),
         };
     }
 
