@@ -272,7 +272,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("Restoring profile: {}", profile.display());
             match file_manager::restore(&profile) {
                 Ok(_) => {
-                    profile_manager::reload_profiles(&ui_copy).unwrap_or_else(|_| println!("Failed to reload profiles"));
+                    profile_manager::reload_profiles(&ui_copy)
+                        .unwrap_or_else(|_| println!("Failed to reload profiles"));
                     println!("Restored profile: {}", profile.display());
                 }
                 Err(e) => {
@@ -302,7 +303,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         ui.on_update_profile(move |title, temp_path, profile_path| {
             println!("Data: {}, {}, {}", title, temp_path, profile_path);
-            profile_manager::save_data(&title, &temp_path, &profile_path).unwrap_or_else(|_| println!("Failed to save data"));
+            profile_manager::save_data(&title, &temp_path, &profile_path)
+                .unwrap_or_else(|_| println!("Failed to save data"));
             match profile_manager::reload_profiles(&ui_copy) {
                 Ok(_) => {
                     println!("Reloaded profiles");
@@ -361,7 +363,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
 
             let _ = rt.block_on(profile_manager::download_image(&search_game, &profile));
-            
+
             let image = match slint::Image::load_from_path(&profile) {
                 Ok(x) => x,
                 Err(_) => {

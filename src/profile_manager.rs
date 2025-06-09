@@ -77,58 +77,48 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
         let _ = fs::create_dir_all(&profile_path);
     }
 
-    let weak = Arc::downgrade(ui);
+    let mut profiles = Vec::new();
+    for entry in fs::read_dir(&profile_path).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
 
-    thread::spawn(move || {
-        let mut profiles = Vec::new();
-        for entry in fs::read_dir(&profile_path).unwrap() {
-            let entry = entry.unwrap();
-            let path = entry.path();
-
-            if !path.is_file() {
-                continue;
-            }
-
-            if let Ok(conf) = Ini::load_from_file(&path) {
-                if let Some(section) = conf.section(Some("profile")) {
-                    let title = section.get("title").unwrap_or("Unknown").to_string();
-                    let try_image = section.get("cover_image").unwrap_or("Unknown").to_string();
-                    let cover_image = load_cover_image(try_image, title.clone()).unwrap();
-
-                    let profile_data = ProfileData {
-                        cover_image,
-                        title: title.into(),
-                        year: section.get("year").unwrap_or("Unknown").to_string().into(),
-                        path_to_profile: section
-                            .get("path_profile")
-                            .unwrap_or("Not found?")
-                            .to_string()
-                            .into(),
-                        temp_path: section
-                            .get("temp_path")
-                            .unwrap_or("Not found?")
-                            .to_string()
-                            .into(),
-                        name: section.get("name").unwrap_or("Unknown").to_string().into(),
-                    };
-
-                    profiles.push(profile_data);
-                }
-            }
-
-            let static_profiles = Arc::new(profiles.clone());
-            let profiles_model = Rc::new(VecModel::from(static_profiles.clone()));
-            let profiles_model_rc = ModelRc::from(profiles_model);
-            println!("profiles: {}", profiles.len());
-
-            slint::invoke_from_event_loop(move || {
-                if let Some(ui) = weak.upgrade() {
-                    let _ = static_profiles;
-                }
-            })
-            .unwrap();
+        if !path.is_file() {
+            continue;
         }
-    });
+
+        if let Ok(conf) = Ini::load_from_file(&path) {
+            if let Some(section) = conf.section(Some("profile")) {
+                let title = section.get("title").unwrap_or("Unknown").to_string();
+                let try_image = section.get("cover_image").unwrap_or("Unknown").to_string();
+                let cover_image = load_cover_image(try_image, title.clone()).unwrap();
+
+                let profile_data = ProfileData {
+                    cover_image,
+                    title: title.into(),
+                    year: section.get("year").unwrap_or("Unknown").to_string().into(),
+                    path_to_profile: section
+                        .get("path_profile")
+                        .unwrap_or("Not found?")
+                        .to_string()
+                        .into(),
+                    temp_path: section
+                        .get("temp_path")
+                        .unwrap_or("Not found?")
+                        .to_string()
+                        .into(),
+                    name: section.get("name").unwrap_or("Unknown").to_string().into(),
+                };
+
+                profiles.push(profile_data);
+            }
+        }
+    }
+
+    let profiles_model = Rc::new(VecModel::from(profiles.clone()));
+    let profiles_model_rc = ModelRc::from(profiles_model);
+    println!("profiles: {}", profiles.len());
+
+    ui.set_profiles(profiles_model_rc);
 
     Ok(())
 }
