@@ -1,11 +1,11 @@
 [package]
 name = "OxideManager"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 
 [dependencies]
 sevenz-rust2 = "0.13.2"
-slint = "1.11.0"
+slint = "1.12.0"
 unrar = "0.5.8"
 zip = "2.6.1"
 rfd = "0.15.2"
@@ -17,6 +17,7 @@ image = "0.25.6"
 reqwest = { version = "0.12.15", features = ["blocking"] }
 dotenv = "0.15.0"
 
+
 [build-dependencies]
-slint-build = "1.11.0"
+slint-build = "1.12.0"
 

@@ -12,7 +12,7 @@ fn main() {
         }
 
         _ => {
-            println!("Unknown profile");
+            panic!("This shouldn't happen, cargo profile: {}", profile);
         }
     }
 

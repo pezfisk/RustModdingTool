@@ -14,6 +14,7 @@ use std::{
     rc::Rc,
     sync::Arc,
     thread,
+    time::Instant,
 };
 use steamgriddb_api::Client;
 use steamgriddb_api::query_parameters::QueryType::Grid;
@@ -77,9 +78,12 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
         let _ = fs::create_dir_all(&profile_path);
     }
 
+    let start = Instant::now();
+
     let mut profiles = Vec::new();
-    for entry in fs::read_dir(&profile_path).unwrap() {
-        let entry = entry.unwrap();
+
+    for entry in fs::read_dir(&profile_path)? {
+        let entry = entry?;
         let path = entry.path();
 
         if !path.is_file() {
@@ -90,7 +94,7 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
             if let Some(section) = conf.section(Some("profile")) {
                 let title = section.get("title").unwrap_or("Unknown").to_string();
                 let try_image = section.get("cover_image").unwrap_or("Unknown").to_string();
-                let cover_image = load_cover_image(try_image, title.clone()).unwrap();
+                let cover_image = load_cover_image(try_image, title.clone())?;
 
                 let profile_data = ProfileData {
                     cover_image,
@@ -113,6 +117,11 @@ pub fn reload_profiles(ui: &Arc<AppWindow>) -> Result<(), Box<dyn Error>> {
             }
         }
     }
+
+    println!(
+        "Time to reload profile data: {:.2}ms",
+        start.elapsed().as_millis()
+    );
 
     let profiles_model = Rc::new(VecModel::from(profiles.clone()));
     let profiles_model_rc = ModelRc::from(profiles_model);

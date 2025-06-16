@@ -42,7 +42,7 @@ export component AppWindow inherits Window {
     min-height: 750px;
     min-width: 1100px;
 
-    MenuBar {
+    /*MenuBar {
         Menu {
             title: @tr("Options");
             MenuItem {
@@ -63,7 +63,7 @@ export component AppWindow inherits Window {
                 }
             }
         }
-    }
+    }*/
 
     VerticalLayout {
         spacing: StyleMetrics.layout-spacing;
@@ -202,7 +202,6 @@ export component AppWindow inherits Window {
                 }
 
                 Button {
-                    text: "Uncompress and move into game dir";
                     clicked => {
                         root.mod();
                     }
@@ -366,7 +365,7 @@ export component AppWindow inherits Window {
                     }
 
                     Text {
-                        text: "Version 0.4.0";
+                        text: "Version 0.4.1";
                     }
 
                     Text {
